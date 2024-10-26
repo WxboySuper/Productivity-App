@@ -35,7 +35,7 @@ class TodoList:
                 
         if 0 <= task_index < len(self.tasks):
             self.tasks[task_index]["completed"] = True
-            print(f"Task marked as completed!")
+            print("Task marked as completed!")
         else:
             print("Invalid task index!")
 
@@ -52,7 +52,7 @@ class TodoList:
         """    
         if 0 <= task_index < len(self.tasks):
             self.tasks[task_index]["task"] = new_task
-            print(f"Task updated successfully!")
+            print("Task updated successfully!")
         else:
             print("Invalid task index!")
 
