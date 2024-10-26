@@ -9,32 +9,34 @@ class TestMain(unittest.TestCase):
     def test_add_task(self, mock_stdout, mock_input):
         main()
         output = mock_stdout.getvalue()
-        self.assertIn('Task added successfully', output)
+        self.assertIn("Task 'Buy groceries' added successfully!", output)
         self.assertIn('Buy groceries', output)
-
-    @patch('builtins.input', side_effect=['1', 'Walk dog', '2', '1', '6'])
+    @patch('builtins.input', side_effect=['1', 'Walk dog', '2', '0', '5', '6'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_mark_task_completed(self, mock_stdout, mock_input):
         main()
         output = mock_stdout.getvalue()
         self.assertIn('[✓]', output)
 
-    @patch('builtins.input', side_effect=['1', 'Old task', '3', '1', 'New task', '6'])
+    @patch('builtins.input', side_effect=['1', 'Old task', '3', '0', 'New task', '5', '6'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_update_task(self, mock_stdout, mock_input):
         main()
         output = mock_stdout.getvalue()
-        self.assertIn('New task', output)
-        self.assertNotIn('Old task', output)
-
-    @patch('builtins.input', side_effect=['1', 'Delete me', '4', '1', '6'])
+        # Check that the final display shows the new task
+        final_display = output.split('=== Todo List ===')[-1]
+        self.assertIn('New task', final_display)
+        self.assertNotIn('Old task', final_display)
+    @patch('builtins.input', side_effect=['1', 'Delete me', '4', '0', '5', '6'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_delete_task(self, mock_stdout, mock_input):
         main()
         output = mock_stdout.getvalue()
-        self.assertNotIn('Delete me', output)
+        self.assertIn("Task 'Delete me' deleted successfully!", output)
+        # Add display tasks command to verify the task list is empty
+        self.assertIn("No tasks in the list!", output)
 
-    @patch('builtins.input', side_effect=['5', '6'])
+    @patch('builtins.input', side_effect=['1', 'Test Task', '5', '6'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_display_tasks(self, mock_stdout, mock_input):
         main()

@@ -126,7 +126,7 @@ class TodoList:
         if not self.tasks:
             print("No tasks in the list!")
             return
-        print("\nTodo List:")
+        print("\n=== Todo List ===")  # Updated header format
         for i, task in enumerate(self.tasks):
             status = "✓" if task["completed"] else " "
             print(f"{i}. [{status}] {task['task']}")
