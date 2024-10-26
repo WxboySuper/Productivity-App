@@ -5,7 +5,6 @@ class TodoList:
 
         The TodoList class is used to manage a list of tasks. This constructor initializes an empty list to store the tasks.
         """
-
         self.tasks = []
 
     def add_task(self, task):
@@ -18,7 +17,6 @@ class TodoList:
         Returns:
             None
         """
-
         self.tasks.append({"task": task, "completed": False})
         print(f"Task '{task}' added successfully!")
 
@@ -32,7 +30,6 @@ class TodoList:
         Raises:
             IndexError: If the `task_index` is out of range of the `self.tasks` list.
         """
-
         if 0 <= task_index < len(self.tasks):
             self.tasks[task_index]["completed"] = True
             print("Task marked as completed!")
@@ -66,7 +63,6 @@ class TodoList:
         Raises:
             IndexError: If the `task_index` is out of range of the `self.tasks` list.
         """
-
         if 0 <= task_index < len(self.tasks):
             removed_task = self.tasks.pop(task_index)
             print(f"Task '{removed_task['task']}' deleted successfully!")
@@ -81,7 +77,6 @@ class TodoList:
 
         Otherwise, it prints the list of tasks, with each task's index, status (indicated by a checkmark if completed, or a space if not), and task text.
         """
-
         if not self.tasks:
             print("No tasks in the list!")
             return
@@ -96,7 +91,6 @@ def main():
 
     The main function runs in an infinite loop, presenting the user with a menu of options and handling the user's choices accordingly. It utilizes the methods of the TodoList class to manage the todo list.
     """
-
     todo = TodoList()
     while True:
         print("\n=== Todo List Application ===")
