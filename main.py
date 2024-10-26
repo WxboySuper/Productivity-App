@@ -1,3 +1,5 @@
+import customtkinter as ctk
+
 class TodoList:
     """
     The TodoList class is used to manage a list of tasks.
@@ -132,58 +134,154 @@ class TodoList:
             print(f"{i}. [{status}] {task['task']}")
 
 
+class TodoListGUI:
+    """
+    A graphical user interface for the TodoList application using customtkinter.
+    
+    This class creates a window with input fields, buttons, and a display area
+    for managing tasks in a visual way. It wraps the TodoList class functionality
+    in a user-friendly interface.
+
+    Attributes:
+        window (CTk): The main application window
+        todo (TodoList): Instance of TodoList class to manage tasks
+        task_entry (CTkEntry): Input field for new tasks
+        task_listbox (CTkTextbox): Display area for all tasks
+    """
+
+    def __init__(self):
+        """
+        Initializes the GUI window and creates all necessary widgets.
+        Sets up the layout with frames for input, task list, and action buttons.
+        """
+        self.todo = TodoList()
+        
+        # Configure the window
+        self.window = ctk.CTk()
+        self.window.title("Todo List Application")
+        self.window.geometry("600x400")
+        
+        # Create frames
+        self.input_frame = ctk.CTkFrame(self.window)
+        self.input_frame.pack(pady=10, padx=10, fill="x")
+        
+        self.list_frame = ctk.CTkFrame(self.window)
+        self.list_frame.pack(pady=10, padx=10, fill="both", expand=True)
+        
+        # Create input elements
+        self.task_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Enter task...")
+        self.task_entry.pack(side="left", padx=5, fill="x", expand=True)
+        
+        self.add_button = ctk.CTkButton(self.input_frame, text="Add Task", command=self.add_task)
+        self.add_button.pack(side="right", padx=5)
+        
+        # Create task list
+        self.task_listbox = ctk.CTkTextbox(self.list_frame)
+        self.task_listbox.pack(pady=5, padx=5, fill="both", expand=True)
+        
+        # Create action buttons
+        self.button_frame = ctk.CTkFrame(self.window)
+        self.button_frame.pack(pady=10, padx=10, fill="x")
+        
+        self.complete_button = ctk.CTkButton(self.button_frame, text="Mark Completed", command=self.mark_completed)
+        self.complete_button.pack(side="left", padx=5)
+        
+        self.update_button = ctk.CTkButton(self.button_frame, text="Update Task", command=self.update_task)
+        self.update_button.pack(side="left", padx=5)
+        
+        self.delete_button = ctk.CTkButton(self.button_frame, text="Delete Task", command=self.delete_task)
+        self.delete_button.pack(side="left", padx=5)
+        
+        self.refresh_task_list()
+
+    def add_task(self):
+        """
+        Handles the addition of a new task from the input field.
+        Retrieves the text from task_entry, adds it to the todo list,
+        clears the input field, and refreshes the display.
+        """
+        task = self.task_entry.get()
+        if task:
+            self.todo.add_task(task)
+            self.task_entry.delete(0, "end")
+            self.refresh_task_list()
+
+    def mark_completed(self):
+        """
+        Marks the selected task as completed.
+        Gets the currently selected task from the textbox,
+        finds its index, and marks it as completed in the todo list.
+        Refreshes the display to show the updated status.
+        """
+        selection = self.task_listbox.selection_get() if self.task_listbox.tag_ranges("sel") else ""
+        if selection:
+            lines = self.task_listbox.get("1.0", "end").splitlines()
+            for i, line in enumerate(lines):
+                if line == selection:
+                    self.todo.mark_completed(i)
+                    break
+        self.refresh_task_list()
+
+    def update_task(self):
+        """
+        Updates the selected task with new text.
+        Opens a dialog for entering new task text,
+        updates the selected task in the todo list,
+        and refreshes the display.
+        """
+        selection = self.task_listbox.selection_get() if self.task_listbox.tag_ranges("sel") else ""
+        if selection:
+            dialog = ctk.CTkInputDialog(text="Enter new task:", title="Update Task")
+            new_task = dialog.get_input()
+            if new_task:
+                lines = self.task_listbox.get("1.0", "end").splitlines()
+                for i, line in enumerate(lines):
+                    if line == selection:
+                        self.todo.update_task(i, new_task)
+                        break
+        self.refresh_task_list()
+
+    def delete_task(self):
+        """
+        Deletes the selected task from the todo list.
+        Gets the currently selected task,
+        removes it from the todo list,
+        and refreshes the display.
+        """
+        selection = self.task_listbox.selection_get() if self.task_listbox.tag_ranges("sel") else ""
+        if selection:
+            lines = self.task_listbox.get("1.0", "end").splitlines()
+            for i, line in enumerate(lines):
+                if line == selection:
+                    self.todo.delete_task(i)
+                    break
+        self.refresh_task_list()
+
+    def refresh_task_list(self):
+        """
+        Updates the task display area with the current state of the todo list.
+        Clears the current display and repopulates it with all tasks,
+        showing their index, completion status, and text.
+        """
+        self.task_listbox.delete("1.0", "end")
+        for i, task in enumerate(self.todo.tasks):
+            status = "✓" if task["completed"] else " "
+            self.task_listbox.insert("end", f"{i}. [{status}] {task['task']}\n")
+
+    def run(self):
+        """
+        Starts the GUI application main loop.
+        This method must be called to display the window and handle user interactions.
+        """
+        self.window.mainloop()
+
 def main():
     """
-    This is the main entry point for the Todo List application.
-    It provides a command-line interface for users to interact with the TodoList class,
-    allowing them to add, mark as completed, update, delete, and display tasks.
-
-    The main function runs in an infinite loop,
-    presenting the user with a menu of options and handling the user's choices accordingly.
-    It utilizes the methods of the TodoList class to manage the todo list.
+    Creates and runs the TodoList GUI application.
+    This is the entry point for the graphical version of the todo list application.
     """
-    todo = TodoList()
-    while True:
-        print("\n=== Todo List Application ===")
-        print("1. Add Task")
-        print("2. Mark Task as Completed")
-        print("3. Update Task")
-        print("4. Delete Task")
-        print("5. Display Tasks")
-        print("6. Exit")
-
-        choice = input("\nEnter your choice (1-6): ")
-
-        if choice == "1":
-            task = input("Enter task: ")
-            todo.add_task(task)
-
-        elif choice == "2":
-            todo.display_tasks()
-            task_index = int(input("Enter task number to mark as completed: "))
-            todo.mark_completed(task_index)
-
-        elif choice == "3":
-            todo.display_tasks()
-            task_index = int(input("Enter task number to update: "))
-            new_task = input("Enter new task: ")
-            todo.update_task(task_index, new_task)
-
-        elif choice == "4":
-            todo.display_tasks()
-            task_index = int(input("Enter task number to delete: "))
-            todo.delete_task(task_index)
-
-        elif choice == "5":
-            todo.display_tasks()
-
-        elif choice == "6":
-            print("Goodbye!")
-            break
-
-        else:
-            print("Invalid choice! Please try again.")
-
+    app = TodoListGUI()
+    app.run()
 
 if __name__ == "__main__":
     main()
