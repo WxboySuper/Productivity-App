@@ -1,0 +1,52 @@
+            - name: Discord Webhook Action
+  # You may pin to the exact commit or the version.
+  # uses: tsickert/discord-webhook@86dc739f3f165f16dadc5666051c367efa1692f4
+  uses: tsickert/discord-webhook@v6.0.0
+  with:
+    # Webhook URL from discord. See: https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks for details
+    webhook-url: https://discord.com/api/webhooks/1299838130920099881/G6HLdTszCwbri_OljLMZm1iRU0Z6ub9v-y6LNUhnrKz3xM4Ckr7MwolV6EQFwYOxpRbS
+    # Message that is sent via the webhook.
+    content: @525942394986823685
+    # ID of the thread you want the webhook to send the message into (will automatically unarchive threads)
+    thread-id: # optional
+    # Name of the thread you want the webhook to create
+    thread-name: # optional
+    # Message flags
+    flags: # optional
+    # Whether Discord should wait for confirmation of message send before responding to the webhook request
+    wait: # optional, default is true
+    # The username that should appear to send the message. Note: username will have the "bot" badge next to their name.
+    username: Productivity App - GitHub
+    # URL for the avatar that should appear with the message.
+    avatar-url: # optional
+    # Boolean to indicate whether the webhook is text-to-speech
+    tts: # optional
+    # Name of a json file that will be sent as the data for the webhook
+    raw-data: # optional
+    # Name of a file that will be uploaded via the webhook
+    filename: # optional
+    # Embed title
+    embed-title: # optional
+    # Embed URL
+    embed-url: # optional
+    # Embed description
+    embed-description: # optional
+    # Embed timestamp (ISO8601 format)
+    embed-timestamp: # optional
+    # Embed color (integer)
+    embed-color: # optional
+    # Embed footer text
+    embed-footer-text: # optional
+    # Embed footer icon url
+    embed-footer-icon-url: # optional
+    # Embed image url
+    embed-image-url: # optional
+    # Embed thumbnail url
+    embed-thumbnail-url: # optional
+    # Embed embed author name
+    embed-author-name: # optional
+    # Embed author url
+    embed-author-url: # optional
+    # Embed author icon
+    embed-author-icon-url: # optional
+          
