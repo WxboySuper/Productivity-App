@@ -1,9 +1,49 @@
 class TodoList:
+    """
+    The TodoList class is used to manage a list of tasks. 
+    It provides methods to add, mark as completed, update, delete, and display tasks.
+    
+    The class has the following methods:
+    
+    add_task(task):
+        Adds a new task to the TodoList.
+        Args:
+            task (str): The text of the new task to add.
+    
+    mark_completed(task_index):
+        Marks the task at the specified index as completed.
+        Args:
+            task_index (int): The index of the task to mark as completed.
+        Raises:
+            IndexError: If the `task_index` is out of range of the `self.tasks` list.
+    
+    update_task(task_index, new_task):
+        Updates the task at the specified index with the new task text.
+        Args:
+            task_index (int): The index of the task to update.
+            new_task (str): The new task text to set.
+        Raises:
+            IndexError: If the `task_index` is out of range of the `self.tasks` list.
+    
+    delete_task(task_index):
+        Deletes the task at the specified index from the TodoList.
+        Args:
+            task_index (int): The index of the task to delete.
+        Raises:
+            IndexError: If the `task_index` is out of range of the `self.tasks` list.
+    
+    display_tasks():
+        Displays the current list of tasks, including their status (completed or not).
+        If the list of tasks is empty, it prints a message indicating that there are no tasks.
+        Otherwise, it prints the list of tasks, with each task's index, 
+        status (indicated by a checkmark if completed, or a space if not), and task text.
+    """
     def __init__(self):
         """
         Initializes a new TodoList instance.
 
-        The TodoList class is used to manage a list of tasks. This constructor initializes an empty list to store the tasks.
+        The TodoList class is used to manage a list of tasks. 
+        This constructor initializes an empty list to store the tasks.
         """
         self.tasks = []
 
@@ -46,7 +86,7 @@ class TodoList:
 
         Raises:
             IndexError: If the `task_index` is out of range of the `self.tasks` list.
-        """    
+        """
         if 0 <= task_index < len(self.tasks):
             self.tasks[task_index]["task"] = new_task
             print("Task updated successfully!")
@@ -75,7 +115,8 @@ class TodoList:
 
         If the list of tasks is empty, it prints a message indicating that there are no tasks.
 
-        Otherwise, it prints the list of tasks, with each task's index, status (indicated by a checkmark if completed, or a space if not), and task text.
+        Otherwise, it prints the list of tasks, with each task's index, 
+        status (indicated by a checkmark if completed, or a space if not), and task text.
         """
         if not self.tasks:
             print("No tasks in the list!")
@@ -85,11 +126,16 @@ class TodoList:
             status = "✓" if task["completed"] else " "
             print(f"{i}. [{status}] {task['task']}")
 
+
 def main():
     """
-    This is the main entry point for the Todo List application. It provides a command-line interface for users to interact with the TodoList class, allowing them to add, mark as completed, update, delete, and display tasks.
+    This is the main entry point for the Todo List application. 
+    It provides a command-line interface for users to interact with the TodoList class, 
+    allowing them to add, mark as completed, update, delete, and display tasks.
 
-    The main function runs in an infinite loop, presenting the user with a menu of options and handling the user's choices accordingly. It utilizes the methods of the TodoList class to manage the todo list.
+    The main function runs in an infinite loop, 
+    presenting the user with a menu of options and handling the user's choices accordingly. 
+    It utilizes the methods of the TodoList class to manage the todo list.
     """
     todo = TodoList()
     while True:
@@ -132,6 +178,7 @@ def main():
 
         else:
             print("Invalid choice! Please try again.")
+
 
 if __name__ == "__main__":
     main()
