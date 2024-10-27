@@ -173,15 +173,23 @@ class TestTodoListGUI(unittest.TestCase):
         
         This test method verifies that the `quick_add_task` method correctly adds a new task to the `todo` list with the specified title and priority. It first sets the `task_entry` widget to "Test Task", sets the `priority_var` to "1", and then calls the `quick_add_task` method. It then checks that the first task in the `todo.tasks` list has the expected title and priority.
         """
+        # Clear the database first
+        with sqlite3.connect("todo.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM tasks')
+            conn.commit()
+            
         self.app.todo.tasks = []
         self.app.task_entry.insert(0, "Test Task")
         self.app.priority_var.set("1")
+        
+        self.app.window.update()
         self.app.quick_add_task()
         self.app.todo.refresh_tasks()
+        self.app.window.update()
+        
         task = self.app.todo.tasks[0]
-        print(task[1])
         self.assertEqual(task[1], "Test Task")
-        print(task[6])
         self.assertEqual(task[6], "1")
 
     def test_task_display_format(self):
