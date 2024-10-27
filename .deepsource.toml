@@ -6,7 +6,3 @@ name = "python"
   [analyzers.meta]
   runtime_version = "3.x.x"
   max_line_length = 150
-
-[[analyzers]]
-name = "test-coverage"
-enabled = true
