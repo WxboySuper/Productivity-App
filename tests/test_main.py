@@ -1,58 +1,121 @@
 import unittest
-from unittest.mock import patch
-from io import StringIO
-from main import main
+from unittest.mock import MagicMock, patch
+import customtkinter as ctk
+from main import TodoListGUI, TodoList
 
-class TestMain(unittest.TestCase):
-    @patch('builtins.input', side_effect=['1', 'Buy groceries', '6'])
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_add_task(self, mock_stdout, mock_input):
-        main()
-        output = mock_stdout.getvalue()
-        self.assertIn("Task 'Buy groceries' added successfully!", output)
-        self.assertIn('Buy groceries', output)
-    @patch('builtins.input', side_effect=['1', 'Walk dog', '2', '0', '5', '6'])
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_mark_task_completed(self, mock_stdout, mock_input):
-        main()
-        output = mock_stdout.getvalue()
-        self.assertIn('[✓]', output)
+class TestTodoListGUI(unittest.TestCase):
+    def setUp(self):
+        self.app = TodoListGUI()
+        
+    def test_initial_state(self):
+        self.assertEqual(len(self.app.todo.tasks), 0)
+        self.assertIsInstance(self.app.task_entry, ctk.CTkEntry)
+        self.assertIsInstance(self.app.task_listbox, ctk.CTkTextbox)
 
-    @patch('builtins.input', side_effect=['1', 'Old task', '3', '0', 'New task', '5', '6'])
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_update_task(self, mock_stdout, mock_input):
-        main()
-        output = mock_stdout.getvalue()
-        # Check that the final display shows the new task
-        final_display = output.split('=== Todo List ===')[-1]
-        self.assertIn('New task', final_display)
-        self.assertNotIn('Old task', final_display)
-    @patch('builtins.input', side_effect=['1', 'Delete me', '4', '0', '5', '6'])
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_delete_task(self, mock_stdout, mock_input):
-        main()
-        output = mock_stdout.getvalue()
-        self.assertIn("Task 'Delete me' deleted successfully!", output)
-        # Add display tasks command to verify the task list is empty
-        self.assertIn("No tasks in the list!", output)
+    def test_add_task(self):
+        self.app.task_entry.insert(0, "Test Task")
+        self.app.add_task()
+        self.assertEqual(len(self.app.todo.tasks), 1)
+        self.assertEqual(self.app.todo.tasks[0]["task"], "Test Task")
+        
+    def test_mark_completed(self):
+        # Add a task first
+        self.app.task_entry.insert(0, "Complete Me")
+        self.app.add_task()
+        
+        # Simulate selecting the task by setting cursor position
+        self.app.task_listbox.mark_set("insert", "1.0")
+        
+        # Mark the task as completed
+        self.app.mark_completed()
+        
+        # Verify the task is marked as completed
+        self.assertTrue(self.app.todo.tasks[0]["completed"])
+        
+    def test_delete_task(self):
+        # First add a task
+        self.app.task_entry.insert(0, "Delete Me")
+        self.app.add_task()
+        initial_count = len(self.app.todo.tasks)
+        
+        # Simulate task selection by setting cursor position
+        self.app.task_listbox.mark_set("insert", "1.0")
+        
+        # Now delete the task
+        self.app.delete_task()
+        
+        # Verify task was deleted
+        self.assertEqual(len(self.app.todo.tasks), initial_count - 1)
+        
+    def test_update_task(self):
+        # Add initial task
+        self.app.task_entry.insert(0, "Original Task")
+        self.app.add_task()
+        
+        # Simulate selecting the task
+        self.app.task_listbox.mark_set("insert", "1.0")
+        
+        # Mock the dialog input and update the task
+        with patch('customtkinter.CTkInputDialog.get_input', return_value="Updated Task"):
+            self.app.update_task()
+        
+        # Verify the task was updated
+        self.assertEqual(self.app.todo.tasks[0]["task"], "Updated Task")
+        
+    def test_refresh_task_list(self):
+        self.app.task_entry.insert(0, "Task 1")
+        self.app.add_task()
+        self.app.task_entry.insert(0, "Task 2")
+        self.app.add_task()
+        display_text = self.app.task_listbox.get("1.0", "end-1c")
+        self.assertIn("Task 1", display_text)
+        self.assertIn("Task 2", display_text)
 
-    @patch('builtins.input', side_effect=['1', 'Test Task', '5', '6'])
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_display_tasks(self, mock_stdout, mock_input):
-        main()
-        output = mock_stdout.getvalue()
-        self.assertIn('=== Todo List ===', output)
+class TestTodoListGUIEdgeCases(unittest.TestCase):
+    def setUp(self):
+        self.app = TodoListGUI()
+        
+    def test_empty_task_add(self):
+        initial_count = len(self.app.todo.tasks)
+        self.app.add_task()
+        self.assertEqual(len(self.app.todo.tasks), initial_count)
+        
+    def test_mark_completed_empty_list(self):
+        self.app.mark_completed()
+        self.assertEqual(len(self.app.todo.tasks), 0)        
+    def test_delete_from_empty_list(self):
+        self.app.delete_task()
+        self.assertEqual(len(self.app.todo.tasks), 0)
+        
+    def test_update_empty_list(self):
+        with patch('customtkinter.CTkInputDialog.get_input', return_value="Updated Task"):
+            self.app.update_task()
+        self.assertEqual(len(self.app.todo.tasks), 0)
+        
+    def test_multiple_operations(self):
+        # Add multiple tasks
+        tasks = ["Task 1", "Task 2", "Task 3"]
+        for task in tasks:
+            self.app.task_entry.insert(0, task)
+            self.app.add_task()
+        
+        # Simulate selecting first task and mark as completed
+        self.app.task_listbox.mark_set("insert", "1.0")
+        self.app.mark_completed()
+        
+        # Simulate selecting second task and update it
+        self.app.task_listbox.mark_set("insert", "2.0")
+        with patch('customtkinter.CTkInputDialog.get_input', return_value="Updated Task"):
+            self.app.update_task()
+            
+        # Simulate selecting third task and delete it
+        self.app.task_listbox.mark_set("insert", "3.0")
+        self.app.delete_task()
+        
+        # Verify final task count
+        self.assertEqual(len(self.app.todo.tasks), 2)
+    def tearDown(self):
+        self.app.window.destroy()
 
-    @patch('builtins.input', side_effect=['7', '6'])
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_invalid_choice(self, mock_stdout, mock_input):
-        main()
-        output = mock_stdout.getvalue()
-        self.assertIn('Invalid choice', output)
-
-    @patch('builtins.input', side_effect=['6'])
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_exit_application(self, mock_stdout, mock_input):
-        main()
-        output = mock_stdout.getvalue()
-        self.assertIn('Goodbye!', output)
+if __name__ == '__main__':
+    unittest.main()
