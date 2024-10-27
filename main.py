@@ -1,293 +1,286 @@
 import customtkinter as ctk
-
+from datetime import datetime
+from tkcalendar import Calendar
+from database import TodoDatabase
 
 class TodoList:
-    """
-    The TodoList class is used to manage a list of tasks.
-    It provides methods to add, mark as completed, update, delete, and display tasks.
-
-    The class has the following methods:
-
-    add_task(task):
-        Adds a new task to the TodoList.
-        Args:
-            task (str): The text of the new task to add.
-
-    mark_completed(task_index):
-        Marks the task at the specified index as completed.
-        Args:
-            task_index (int): The index of the task to mark as completed.
-        Raises:
-            IndexError: If the `task_index` is out of range of the `self.tasks` list.
-
-    update_task(task_index, new_task):
-        Updates the task at the specified index with the new task text.
-        Args:
-            task_index (int): The index of the task to update.
-            new_task (str): The new task text to set.
-        Raises:
-            IndexError: If the `task_index` is out of range of the `self.tasks` list.
-
-    delete_task(task_index):
-        Deletes the task at the specified index from the TodoList.
-        Args:
-            task_index (int): The index of the task to delete.
-        Raises:
-            IndexError: If the `task_index` is out of range of the `self.tasks` list.
-
-    display_tasks():
-        Displays the current list of tasks, including their status (completed or not).
-        If the list of tasks is empty,
-        it prints a message indicating that there are no tasks.
-        Otherwise, it prints the list of tasks, with each task's index,
-        status (indicated by a checkmark if completed, or a space if not),
-        and task text.
-    """
-
     def __init__(self):
-        """
-        Initializes a new TodoList instance.
-
-        The TodoList class is used to manage a list of tasks.
-        This constructor initializes an empty list to store the tasks.
-        """
+        self.db = TodoDatabase()
         self.tasks = []
 
-    def add_task(self, task):
-        """
-        Adds a new task to the TodoList.
+    def refresh_tasks(self):
+        self.tasks = self.db.get_all_tasks()
 
-        Args:
-            task (str): The text of the new task to add.
-
-        Returns:
-            None
-        """
-        self.tasks.append({"task": task, "completed": False})
+    def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
+        task_id = self.db.add_task(task, deadline, category, notes, priority)
+        self.refresh_tasks()
         print(f"Task '{task}' added successfully!")
+        return task_id
 
     def mark_completed(self, task_index):
-        """
-        Marks the task at the specified index as completed.
-
-        Args:
-            task_index (int): The index of the task to mark as completed.
-
-        Raises:
-            IndexError: If the `task_index` is out of range of the `self.tasks` list.
-        """
         if 0 <= task_index < len(self.tasks):
-            self.tasks[task_index]["completed"] = True
+            task_id = self.tasks[task_index][0]
+            self.db.mark_completed(task_id)
+            self.refresh_tasks()
             print("Task marked as completed!")
         else:
             print("Invalid task index!")
 
-    def update_task(self, task_index, new_task):
-        """
-        Updates the task at the specified index with the new task text.
-
-        Args:
-            task_index (int): The index of the task to update.
-            new_task (str): The new task text to set.
-
-        Raises:
-            IndexError: If the `task_index` is out of range of the `self.tasks` list.
-        """
+    def update_task(self, task_index, **updates):
         if 0 <= task_index < len(self.tasks):
-            self.tasks[task_index]["task"] = new_task
+            task_id = self.tasks[task_index][0]
+            self.db.update_task(task_id, **updates)
+            self.refresh_tasks()
             print("Task updated successfully!")
         else:
             print("Invalid task index!")
 
     def delete_task(self, task_index):
-        """
-        Deletes the task at the specified index from the TodoList.
-
-        Args:
-            task_index (int): The index of the task to delete.
-
-        Raises:
-            IndexError: If the `task_index` is out of range of the `self.tasks` list.
-        """
         if 0 <= task_index < len(self.tasks):
-            removed_task = self.tasks.pop(task_index)
-            print(f"Task '{removed_task['task']}' deleted successfully!")
+            task_id = self.tasks[task_index][0]
+            task = self.db.get_task(task_id)
+            self.db.delete_task(task_id)
+            self.refresh_tasks()
+            print(f"Task '{task[1]}' deleted successfully!")
         else:
             print("Invalid task index!")
 
-    def display_tasks(self):
-        """
-        Displays the current list of tasks, including their status (completed or not).
-
-        If the list of tasks is empty,
-        it prints a message indicating that there are no tasks.
-
-        Otherwise, it prints the list of tasks, with each task's index,
-        status (indicated by a checkmark if completed, or a space if not),
-        and task text.
-        """
-        if not self.tasks:
-            print("No tasks in the list!")
-            return
-        print("\n=== Todo List ===")  # Updated header format
-        for i, task in enumerate(self.tasks):
-            status = "✓" if task["completed"] else " "
-            print(f"{i}. [{status}] {task['task']}")
-
-
 class TodoListGUI:
-    """
-    A graphical user interface for the TodoList application using customtkinter.
-
-    This class creates a window with input fields, buttons, and a display area
-    for managing tasks in a visual way. It wraps the TodoList class functionality
-    in a user-friendly interface.
-
-    Attributes:
-        window (CTk): The main application window
-        todo (TodoList): Instance of TodoList class to manage tasks
-        task_entry (CTkEntry): Input field for new tasks
-        task_listbox (CTkTextbox): Display area for all tasks
-    """
-
     def __init__(self):
-        """
-        Initializes the GUI window and creates all necessary widgets.
-        Sets up the layout with frames for input, task list, and action buttons.
-        """
         self.todo = TodoList()
+        self.selected_task_index = None
 
-        # Configure the window
         self.window = ctk.CTk()
         self.window.title("Todo List Application")
-        self.window.geometry("600x400")
+        self.window.geometry("800x600")
 
-        # Create frames
-        self.input_frame = ctk.CTkFrame(self.window)
-        self.input_frame.pack(pady=10, padx=10, fill="x")
-
-        self.list_frame = ctk.CTkFrame(self.window)
-        self.list_frame.pack(pady=10, padx=10, fill="both", expand=True)
-
-        # Create input elements
-        self.task_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Enter task...")
-        self.task_entry.pack(side="left", padx=5, fill="x", expand=True)
-
-        self.add_button = ctk.CTkButton(self.input_frame, text="Add Task", command=self.add_task)
-        self.add_button.pack(side="right", padx=5)
-
-        # Create task list
-        self.task_listbox = ctk.CTkTextbox(self.list_frame)
-        self.task_listbox.pack(pady=5, padx=5, fill="both", expand=True)
-
-        # Create action buttons
-        self.button_frame = ctk.CTkFrame(self.window)
-        self.button_frame.pack(pady=10, padx=10, fill="x")
-
-        self.complete_button = ctk.CTkButton(self.button_frame, text="Mark Completed", command=self.mark_completed)
-        self.complete_button.pack(side="left", padx=5)
-
-        self.update_button = ctk.CTkButton(self.button_frame, text="Update Task", command=self.update_task)
-        self.update_button.pack(side="left", padx=5)
-
-        self.delete_button = ctk.CTkButton(self.button_frame, text="Delete Task", command=self.delete_task)
-        self.delete_button.pack(side="left", padx=5)
-
+        self.setup_main_layout()
+        self.create_context_menu()
+        self.bind_events()
+    
+        # Load existing tasks after GUI is ready
+        self.todo.refresh_tasks()
         self.refresh_task_list()
 
-    def add_task(self):
-        """
-        Handles the addition of a new task from the input field.
-        Retrieves the text from task_entry, adds it to the todo list,
-        clears the input field, and refreshes the display.
-        """
+    def setup_main_layout(self):
+        self.list_panel = ctk.CTkFrame(self.window)
+        self.list_panel.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+        self.quick_add_frame = ctk.CTkFrame(self.list_panel)
+        self.quick_add_frame.pack(fill="x", padx=5, pady=5)
+        
+        self.task_entry = ctk.CTkEntry(self.quick_add_frame, placeholder_text="Quick add task...")
+        self.task_entry.pack(side="left", fill="x", expand=True, padx=5)
+        
+        self.add_button = ctk.CTkButton(self.quick_add_frame, text="+", width=30, command=self.quick_add_task)
+        self.add_button.pack(side="right", padx=5)
+
+        self.task_listbox = ctk.CTkTextbox(self.list_panel)
+        self.task_listbox.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.setup_detail_panel()
+
+    def setup_detail_panel(self):
+        self.detail_panel = ctk.CTkFrame(self.window, width=300)
+        self.detail_panel.pack(side="right", fill="both", padx=10, pady=10, expand=False)
+
+        ctk.CTkLabel(self.detail_panel, text="Task Details").pack(pady=5)
+        
+        self.detail_title = ctk.CTkEntry(self.detail_panel, placeholder_text="Task title")
+        self.detail_title.pack(fill="x", padx=10, pady=5)
+
+        categories = ["Work", "Personal"]
+        self.category_var = ctk.StringVar(value="Category")
+        self.category_menu = ctk.CTkOptionMenu(
+            self.detail_panel,
+            values=categories,
+            variable=self.category_var
+        )
+        self.category_menu.pack(fill="x", padx=10, pady=5)
+
+        priorities = ["ASAP", "1", "2", "3", "4"]
+        self.priority_var = ctk.StringVar(value="Priority")
+        self.priority_menu = ctk.CTkOptionMenu(
+            self.detail_panel,
+            values=priorities,
+            variable=self.priority_var
+        )
+        self.priority_menu.pack(fill="x", padx=10, pady=5)
+        self.deadline_button = ctk.CTkButton(
+            self.detail_panel,
+            text="Set Deadline",
+            command=self.show_calendar
+        )
+        self.deadline_button.pack(fill="x", padx=10, pady=5)
+
+        ctk.CTkLabel(self.detail_panel, text="Notes").pack(pady=5)
+        self.notes_area = ctk.CTkTextbox(self.detail_panel, height=100)
+        self.notes_area.pack(fill="x", padx=10, pady=5)
+
+        self.save_button = ctk.CTkButton(
+            self.detail_panel,
+            text="Save Changes",
+            command=self.save_task_details
+        )
+        self.save_button.pack(fill="x", padx=10, pady=5)
+
+        self.labels_frame = ctk.CTkFrame(self.detail_panel)
+        self.labels_frame.pack(fill="x", padx=10, pady=5)
+        
+        self.label_entry = ctk.CTkEntry(self.labels_frame, placeholder_text="New label...")
+        self.label_entry.pack(side="left", fill="x", expand=True)
+        
+        self.add_label_button = ctk.CTkButton(
+            self.labels_frame, 
+            text="+", 
+            width=30,
+            command=self.create_label
+        )
+        self.add_label_button.pack(side="right")
+        
+        self.labels_list = ctk.CTkTextbox(self.detail_panel, height=100)
+        self.labels_list.pack(fill="x", padx=10, pady=5)
+
+    def create_label(self):
+        label_name = self.label_entry.get()
+        if label_name:
+            label_id = self.todo.db.add_label(label_name)
+            if self.selected_task_index is not None:
+                task_id = self.todo.tasks[self.selected_task_index][0]
+                self.todo.db.link_task_label(task_id, label_id)
+            self.label_entry.delete(0, "end")
+            self.refresh_labels()
+
+    def refresh_labels(self):
+        self.labels_list.delete("1.0", "end")
+        if self.selected_task_index is not None:
+            task_id = self.todo.tasks[self.selected_task_index][0]
+            labels = self.todo.db.get_task_labels(task_id)
+            for label in labels:
+                self.labels_list.insert("end", f"#{label[1]} ")
+
+    def create_context_menu(self):
+        self.context_menu = ctk.CTkFrame(self.window)
+    
+        def create_command(cmd):
+            def wrapped_command():
+                cmd()
+                self.context_menu.place_forget()  # Hide menu after action
+            return wrapped_command
+    
+        actions = [
+            ("Complete", self.mark_completed),
+            ("Delete", self.delete_task)
+        ]
+    
+        for text, command in actions:
+            btn = ctk.CTkButton(
+                self.context_menu, 
+                text=text, 
+                command=create_command(command)
+            )
+            btn.pack(pady=2, padx=2)
+
+    def bind_events(self):
+        self.task_listbox.bind("<Button-3>", self.show_context_menu)
+        self.task_listbox.bind("<Button-1>", self.handle_task_selection)
+
+    def show_context_menu(self, event):
+        # Get task index from click position
+        index = int(self.task_listbox.index("@%d,%d" % (event.x, event.y)).split('.')[0]) - 1
+        if 0 <= index < len(self.todo.tasks):
+            self.selected_task_index = index
+            # Position menu at cursor
+            x = self.window.winfo_pointerx() - self.window.winfo_rootx()
+            y = self.window.winfo_pointery() - self.window.winfo_rooty()
+            self.context_menu.place(x=x, y=y)
+
+    def handle_task_selection(self, event):
+        self.context_menu.place_forget()
+        index = int(self.task_listbox.index("@%d,%d" % (event.x, event.y)).split('.')[0]) - 1
+        if 0 <= index < len(self.todo.tasks):
+            self.selected_task_index = index
+            self.load_task_details(index)
+
+    def load_task_details(self, index):
+        task = self.todo.tasks[index]
+        self.detail_title.delete(0, "end")
+        self.detail_title.insert(0, task[1])  # task title
+        self.category_var.set(task[4] or "Category")  # category
+        self.notes_area.delete("1.0", "end")
+        if task[5]:  # notes
+            self.notes_area.insert("1.0", task[5])
+
+    def save_task_details(self):
+        if self.selected_task_index is not None:
+            updates = {
+                "title": self.detail_title.get(),
+                "category": self.category_var.get(),
+                "notes": self.notes_area.get("1.0", "end-1c")
+            }
+            self.todo.update_task(self.selected_task_index, **updates)
+            self.refresh_task_list()
+
+    def quick_add_task(self):
         task = self.task_entry.get()
         if task:
-            self.todo.add_task(task)
+            priority = self.priority_var.get() if self.priority_var.get() != "Priority" else None
+            category = self.category_var.get() if self.category_var.get() != "Category" else None
+            self.todo.add_task(
+                task, 
+                priority=priority,
+                category=category
+            )
             self.task_entry.delete(0, "end")
             self.refresh_task_list()
 
-    def mark_completed(self):
-        """
-        Marks the selected task as completed.
-        Gets the currently selected task from the textbox,
-        finds its index, and marks it as completed in the todo list.
-        Refreshes the display to show the updated status.
-        """
-        try:
-            selected_text = self.task_listbox.get("1.0", "end-1c")
-            current_line = self.task_listbox.index("insert").split('.')[0]
-            lines = selected_text.split('\n')
-            if 0 <= int(current_line) - 1 < len(lines):
-                self.todo.mark_completed(int(current_line) - 1)
-            self.refresh_task_list()
-        except Exception:
-            pass
+    def show_calendar(self):
+        calendar_window = ctk.CTkToplevel(self.window)
+        calendar_window.title("Select Deadline")
+        
+        cal = Calendar(calendar_window, selectmode='day', mindate=datetime.now())
+        cal.pack(padx=10, pady=10)
+        
+        def set_deadline():
+            if self.selected_task_index is not None:
+                deadline = cal.get_date()
+                self.todo.update_task(self.selected_task_index, deadline=deadline)
+                self.refresh_task_list()
+            calendar_window.destroy()
+            
+        confirm_button = ctk.CTkButton(
+            calendar_window, 
+            text="Confirm", 
+            command=set_deadline
+        )
+        confirm_button.pack(pady=5)
 
-    def update_task(self):
-        """
-        Updates the selected task with new text.
-        Opens a dialog for entering new task text,
-        updates the selected task in the todo list,
-        and refreshes the display.
-        """
-        try:
-            selected_text = self.task_listbox.get("1.0", "end-1c")
-            current_line = self.task_listbox.index("insert").split('.')[0]
-            lines = selected_text.split('\n')
-            if 0 <= int(current_line) - 1 < len(lines):
-                dialog = ctk.CTkInputDialog(text="Enter new task:", title="Update Task")
-                new_task = dialog.get_input()
-                if new_task:
-                    self.todo.update_task(int(current_line) - 1, new_task)
+    def mark_completed(self):
+        if self.selected_task_index is not None:
+            self.todo.mark_completed(self.selected_task_index)
             self.refresh_task_list()
-        except Exception:
-            pass
 
     def delete_task(self):
-        """
-        Deletes the selected task from the todo list.
-        Gets the currently selected task,
-        removes it from the todo list,
-        and refreshes the display.
-        """
-        try:
-            selected_text = self.task_listbox.get("1.0", "end-1c")
-            current_line = self.task_listbox.index("insert").split('.')[0]
-            lines = selected_text.split('\n')
-            if 0 <= int(current_line) - 1 < len(lines):
-                self.todo.delete_task(int(current_line) - 1)
+        if self.selected_task_index is not None:
+            self.todo.delete_task(self.selected_task_index)
+            self.selected_task_index = None
             self.refresh_task_list()
-        except Exception:
-            pass
 
     def refresh_task_list(self):
-        """
-        Updates the task display area with the current state of the todo list.
-        Clears the current display and repopulates it with all tasks,
-        showing their index, completion status, and text.
-        """
         self.task_listbox.delete("1.0", "end")
         for i, task in enumerate(self.todo.tasks):
-            status = "✓" if task["completed"] else " "
-            self.task_listbox.insert("end", f"{i}. [{status}] {task['task']}\n")
+            status = "✓" if task[2] else " "
+            priority = f"[{task[6]}]" if task[6] else ""
+            category = f"[{task[4]}]" if task[4] else ""
+            deadline = f" (Due: {task[3]})" if task[3] else ""
+            self.task_listbox.insert("end", f"{i}. [{status}] {priority} {task[1]} {category}{deadline}\n")
 
     def run(self):
-        """
-        Starts the GUI application main loop.
-        This method must be called to display the window and handle user interactions.
-        """
         self.window.mainloop()
 
-
 def main():
-    """
-    Creates and runs the TodoList GUI application.
-    This is the entry point for the graphical version of the todo list application.
-    """
     app = TodoListGUI()
     app.run()
-
 
 if __name__ == "__main__":
     main()
