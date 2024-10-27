@@ -1,5 +1,6 @@
 import customtkinter as ctk
 
+
 class TodoList:
     """
     The TodoList class is used to manage a list of tasks.
@@ -213,14 +214,15 @@ class TodoListGUI:
         finds its index, and marks it as completed in the todo list.
         Refreshes the display to show the updated status.
         """
-        selection = self.task_listbox.selection_get() if self.task_listbox.tag_ranges("sel") else ""
-        if selection:
-            lines = self.task_listbox.get("1.0", "end").splitlines()
-            for i, line in enumerate(lines):
-                if line == selection:
-                    self.todo.mark_completed(i)
-                    break
-        self.refresh_task_list()
+        try:
+            selected_text = self.task_listbox.get("1.0", "end-1c")
+            current_line = self.task_listbox.index("insert").split('.')[0]
+            lines = selected_text.split('\n')
+            if 0 <= int(current_line) - 1 < len(lines):
+                self.todo.mark_completed(int(current_line) - 1)
+            self.refresh_task_list()
+        except Exception:
+            pass
 
     def update_task(self):
         """
@@ -229,17 +231,18 @@ class TodoListGUI:
         updates the selected task in the todo list,
         and refreshes the display.
         """
-        selection = self.task_listbox.selection_get() if self.task_listbox.tag_ranges("sel") else ""
-        if selection:
-            dialog = ctk.CTkInputDialog(text="Enter new task:", title="Update Task")
-            new_task = dialog.get_input()
-            if new_task:
-                lines = self.task_listbox.get("1.0", "end").splitlines()
-                for i, line in enumerate(lines):
-                    if line == selection:
-                        self.todo.update_task(i, new_task)
-                        break
-        self.refresh_task_list()
+        try:
+            selected_text = self.task_listbox.get("1.0", "end-1c")
+            current_line = self.task_listbox.index("insert").split('.')[0]
+            lines = selected_text.split('\n')
+            if 0 <= int(current_line) - 1 < len(lines):
+                dialog = ctk.CTkInputDialog(text="Enter new task:", title="Update Task")
+                new_task = dialog.get_input()
+                if new_task:
+                    self.todo.update_task(int(current_line) - 1, new_task)
+            self.refresh_task_list()
+        except Exception:
+            pass
 
     def delete_task(self):
         """
@@ -248,15 +251,15 @@ class TodoListGUI:
         removes it from the todo list,
         and refreshes the display.
         """
-        selection = self.task_listbox.selection_get() if self.task_listbox.tag_ranges("sel") else ""
-        if selection:
-            lines = self.task_listbox.get("1.0", "end").splitlines()
-            for i, line in enumerate(lines):
-                if line == selection:
-                    self.todo.delete_task(i)
-                    break
-        self.refresh_task_list()
-
+        try:
+            selected_text = self.task_listbox.get("1.0", "end-1c")
+            current_line = self.task_listbox.index("insert").split('.')[0]
+            lines = selected_text.split('\n')
+            if 0 <= int(current_line) - 1 < len(lines):
+                self.todo.delete_task(int(current_line) - 1)
+            self.refresh_task_list()
+        except Exception:
+            pass
     def refresh_task_list(self):
         """
         Updates the task display area with the current state of the todo list.
@@ -275,6 +278,7 @@ class TodoListGUI:
         """
         self.window.mainloop()
 
+
 def main():
     """
     Creates and runs the TodoList GUI application.
@@ -282,6 +286,7 @@ def main():
     """
     app = TodoListGUI()
     app.run()
+
 
 if __name__ == "__main__":
     main()
