@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 import customtkinter as ctk
 import os
 from main import TodoListGUI
