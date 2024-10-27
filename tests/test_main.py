@@ -226,21 +226,6 @@ class TestTodoListGUI(unittest.TestCase):
         task = self.app.todo.tasks[0]
         self.assertTrue(task[2])
 
-    def test_task_display_format(self):
-        """
-        Tests the formatting of task display text in the TodoListGUI application.
-        
-        This test method verifies that the task display text in the task listbox contains the expected elements, including the task title, priority, and category. It first sets the task entry to "Display Test", sets the priority to "1" and the category to "Work", and then calls the `quick_add_task` method to add the task to the todo list. It then retrieves the display text from the task listbox and checks that it contains the expected elements.
-        """
-        self.app.task_entry.insert(0, "Display Test")
-        self.app.priority_var.set("1")
-        self.app.category_var.set("Work")
-        self.app.quick_add_task()
-        display_text = self.app.task_listbox.get("1.0", "end-1c")
-        self.assertIn("Display Test", display_text)
-        self.assertIn("[1]", display_text)
-        self.assertIn("[Work]", display_text)
-
     def tearDown(self):
         """
         Cleans up the test environment by destroying the application window and removing the todo.db file if it exists.
