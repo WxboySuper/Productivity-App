@@ -3,3 +3,4 @@
 /tests/__pycache__
 /.vscode
 todo.db
+test_todo.db
