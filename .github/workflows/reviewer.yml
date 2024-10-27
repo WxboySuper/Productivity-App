@@ -1,0 +1,17 @@
+name: Auto assign reviewers on labeled action
+on: 
+    pull_request:
+        types:
+          - labeled
+jobs:
+    add-reviewers-on-label:
+        if: contains(github.event.pull_request.labels.*.name,'Open-for-Review')
+        runs-on : ubuntu-latest
+        steps :
+            - name: Assign reviewers
+              uses: ks-keshava-rao/add-reviewers@v1
+              with:
+                 reviewers: 60972009
+                 token: "${{ secrets.GITHUB_TOKEN }}"
+                 debugMode: true
+              id: assign_reviewers
