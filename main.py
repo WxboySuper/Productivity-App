@@ -260,6 +260,7 @@ class TodoListGUI:
             self.refresh_task_list()
         except Exception:
             pass
+
     def refresh_task_list(self):
         """
         Updates the task display area with the current state of the todo list.
