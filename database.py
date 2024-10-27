@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime
 
 class TodoDatabase:
     def __init__(self, db_file="todo.db"):
