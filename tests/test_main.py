@@ -22,9 +22,7 @@ class TestTodoDatabase(unittest.TestCase):
     """
 
     def setUp(self):
-        """
-        Sets up the test environment by creating a test database instance for the TodoDatabase class.
-        """
+        """Sets up the test environment by creating a test database instance for the TodoDatabase class."""
         self.test_db = "test_todo.db"
         self.db = TodoDatabase(self.test_db)
 
