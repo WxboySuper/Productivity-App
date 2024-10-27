@@ -57,7 +57,7 @@ class TodoListGUI:
         self.setup_main_layout()
         self.create_context_menu()
         self.bind_events()
-    
+
         # Load existing tasks after GUI is ready
         self.todo.refresh_tasks()
         self.refresh_task_list()
@@ -68,10 +68,10 @@ class TodoListGUI:
 
         self.quick_add_frame = ctk.CTkFrame(self.list_panel)
         self.quick_add_frame.pack(fill="x", padx=5, pady=5)
-        
+
         self.task_entry = ctk.CTkEntry(self.quick_add_frame, placeholder_text="Quick add task...")
         self.task_entry.pack(side="left", fill="x", expand=True, padx=5)
-        
+
         self.add_button = ctk.CTkButton(self.quick_add_frame, text="+", width=30, command=self.quick_add_task)
         self.add_button.pack(side="right", padx=5)
 
@@ -85,7 +85,7 @@ class TodoListGUI:
         self.detail_panel.pack(side="right", fill="both", padx=10, pady=10, expand=False)
 
         ctk.CTkLabel(self.detail_panel, text="Task Details").pack(pady=5)
-        
+
         self.detail_title = ctk.CTkEntry(self.detail_panel, placeholder_text="Task title")
         self.detail_title.pack(fill="x", padx=10, pady=5)
 
@@ -126,10 +126,10 @@ class TodoListGUI:
 
         self.labels_frame = ctk.CTkFrame(self.detail_panel)
         self.labels_frame.pack(fill="x", padx=10, pady=5)
-        
+
         self.label_entry = ctk.CTkEntry(self.labels_frame, placeholder_text="New label...")
         self.label_entry.pack(side="left", fill="x", expand=True)
-        
+
         self.add_label_button = ctk.CTkButton(
             self.labels_frame, 
             text="+", 
@@ -137,7 +137,7 @@ class TodoListGUI:
             command=self.create_label
         )
         self.add_label_button.pack(side="right")
-        
+
         self.labels_list = ctk.CTkTextbox(self.detail_panel, height=100)
         self.labels_list.pack(fill="x", padx=10, pady=5)
 
@@ -161,18 +161,18 @@ class TodoListGUI:
 
     def create_context_menu(self):
         self.context_menu = ctk.CTkFrame(self.window)
-    
+
         def create_command(cmd):
             def wrapped_command():
                 cmd()
                 self.context_menu.place_forget()  # Hide menu after action
             return wrapped_command
-    
+
         actions = [
             ("Complete", self.mark_completed),
             ("Delete", self.delete_task)
         ]
-    
+
         for text, command in actions:
             btn = ctk.CTkButton(
                 self.context_menu, 
@@ -237,17 +237,17 @@ class TodoListGUI:
     def show_calendar(self):
         calendar_window = ctk.CTkToplevel(self.window)
         calendar_window.title("Select Deadline")
-        
+
         cal = Calendar(calendar_window, selectmode='day', mindate=datetime.now())
         cal.pack(padx=10, pady=10)
-        
+
         def set_deadline():
             if self.selected_task_index is not None:
                 deadline = cal.get_date()
                 self.todo.update_task(self.selected_task_index, deadline=deadline)
                 self.refresh_task_list()
             calendar_window.destroy()
-            
+
         confirm_button = ctk.CTkButton(
             calendar_window, 
             text="Confirm", 
