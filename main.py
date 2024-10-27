@@ -137,7 +137,7 @@ class TodoList:
 class TodoListGUI:
     """
     A graphical user interface for the TodoList application using customtkinter.
-    
+
     This class creates a window with input fields, buttons, and a display area
     for managing tasks in a visual way. It wraps the TodoList class functionality
     in a user-friendly interface.
@@ -155,43 +155,43 @@ class TodoListGUI:
         Sets up the layout with frames for input, task list, and action buttons.
         """
         self.todo = TodoList()
-        
+
         # Configure the window
         self.window = ctk.CTk()
         self.window.title("Todo List Application")
         self.window.geometry("600x400")
-        
+
         # Create frames
         self.input_frame = ctk.CTkFrame(self.window)
         self.input_frame.pack(pady=10, padx=10, fill="x")
-        
+
         self.list_frame = ctk.CTkFrame(self.window)
         self.list_frame.pack(pady=10, padx=10, fill="both", expand=True)
-        
+
         # Create input elements
         self.task_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Enter task...")
         self.task_entry.pack(side="left", padx=5, fill="x", expand=True)
-        
+
         self.add_button = ctk.CTkButton(self.input_frame, text="Add Task", command=self.add_task)
         self.add_button.pack(side="right", padx=5)
-        
+
         # Create task list
         self.task_listbox = ctk.CTkTextbox(self.list_frame)
         self.task_listbox.pack(pady=5, padx=5, fill="both", expand=True)
-        
+
         # Create action buttons
         self.button_frame = ctk.CTkFrame(self.window)
         self.button_frame.pack(pady=10, padx=10, fill="x")
-        
+
         self.complete_button = ctk.CTkButton(self.button_frame, text="Mark Completed", command=self.mark_completed)
         self.complete_button.pack(side="left", padx=5)
-        
+
         self.update_button = ctk.CTkButton(self.button_frame, text="Update Task", command=self.update_task)
         self.update_button.pack(side="left", padx=5)
-        
+
         self.delete_button = ctk.CTkButton(self.button_frame, text="Delete Task", command=self.delete_task)
         self.delete_button.pack(side="left", padx=5)
-        
+
         self.refresh_task_list()
 
     def add_task(self):
