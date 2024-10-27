@@ -179,7 +179,9 @@ class TestTodoListGUI(unittest.TestCase):
         self.app.quick_add_task()
         self.app.todo.refresh_tasks()
         task = self.app.todo.tasks[0]
+        print(task[1])
         self.assertEqual(task[1], "Test Task")
+        print(task[6])
         self.assertEqual(task[6], "1")
 
     def test_task_display_format(self):
