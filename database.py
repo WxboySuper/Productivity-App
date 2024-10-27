@@ -5,7 +5,7 @@ class TodoDatabase:
     def __init__(self, db_file="todo.db"):
         self.db_file = db_file
         self.init_database()
-    
+
     def __del__(self):
         # Ensure connections are closed
         try:
@@ -100,13 +100,13 @@ class TodoDatabase:
     def update_task(self, task_id, **updates):
         valid_fields = {'title', 'completed', 'deadline', 'category', 'notes', 'priority'}
         update_fields = {k: v for k, v in updates.items() if k in valid_fields}
-        
+
         if not update_fields:
             return
 
         query = 'UPDATE tasks SET ' + ', '.join(f'{k} = ?' for k in update_fields)
         query += ' WHERE id = ?'
-        
+
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (*update_fields.values(), task_id))
