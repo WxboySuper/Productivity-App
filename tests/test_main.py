@@ -1,7 +1,7 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import customtkinter as ctk
-from main import TodoListGUI, TodoList
+from main import TodoListGUI
 
 class TestTodoListGUI(unittest.TestCase):
     def setUp(self):
