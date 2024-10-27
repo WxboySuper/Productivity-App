@@ -1,5 +1,6 @@
 import sqlite3
 
+
 class TodoDatabase:
     def __init__(self, db_file="todo.db"):
         self.db_file = db_file
@@ -8,7 +9,7 @@ class TodoDatabase:
     def __del__(self):
         try:
             self.conn.close()
-        except:
+        except Exception:
             pass
 
     def init_database(self):
@@ -46,20 +47,44 @@ class TodoDatabase:
             conn.commit()
 
     def update_task(self, task_id, **updates):
-        # Whitelist of allowed fields for updates
-        valid_fields = {'title', 'completed', 'deadline', 'category', 'notes', 'priority'}
-        # Filter updates to only include valid fields
-        update_fields = {k: v for k, v in updates.items() if k in valid_fields}
+        # Define strict whitelist of allowed fields and their types
+        ALLOWED_UPDATES = {
+            'title': str,
+            'completed': bool,
+            'deadline': str,
+            'category': str,
+            'notes': str,
+            'priority': str
+        }
 
-        if not update_fields:
+        # Validate priority values against allowed options
+        VALID_PRIORITIES = {'ASAP', '1', '2', '3', '4'}
+
+        # Filter and validate updates
+        validated_updates = {}
+        for field, value in updates.items():
+            if field not in ALLOWED_UPDATES:
+                continue
+
+            # Type validation
+            if not isinstance(value, ALLOWED_UPDATES[field]):
+                continue
+
+            # Additional validation for priority field
+            if field == 'priority' and value not in VALID_PRIORITIES:
+                continue
+
+            validated_updates[field] = value
+
+        if not validated_updates:
             return
 
-        # Build the parameterized query
-        placeholders = [f"{field} = ?" for field in update_fields]
-        query = f"UPDATE tasks SET {', '.join(placeholders)} WHERE id = ?"
+        # Use static query structure with parameterized values
+        # skipcq: BAN-B608
+        query = '''UPDATE tasks SET ''' + ', '.join(f'{field} = ?' for field in ALLOWED_UPDATES if field in validated_updates) + ''' WHERE id = ?'''
 
-        # Create values tuple with only the values
-        values = tuple(update_fields.values()) + (task_id,)
+        # Create values tuple with only the values, in the same order as the query
+        values = tuple(validated_updates[field] for field in ALLOWED_UPDATES if field in validated_updates) + (task_id,)
 
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()

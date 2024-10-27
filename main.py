@@ -3,6 +3,7 @@ from datetime import datetime
 from tkcalendar import Calendar
 from database import TodoDatabase
 
+
 class TodoList:
     def __init__(self):
         self.db = TodoDatabase()
@@ -45,6 +46,7 @@ class TodoList:
         else:
             print("Invalid task index!")
 
+
 class TodoListGUI:
     def __init__(self):
         self.todo = TodoList()
@@ -53,6 +55,20 @@ class TodoListGUI:
         self.window = ctk.CTk()
         self.window.title("Todo List Application")
         self.window.geometry("800x600")
+
+        self.labels_list = None
+        self.detail_panel = None
+        self.notes_area = None
+        self.detail_title = None
+        self.category_var = None
+        self.category_menu = None
+        self.priority_var = None
+        self.priority_menu = None
+        self.deadline_button = None
+        self.save_button = None
+        self.labels_frame = None
+        self.label_entry = None
+        self.add_label_button = None
 
         self.setup_main_layout()
         self.create_context_menu()
@@ -131,8 +147,8 @@ class TodoListGUI:
         self.label_entry.pack(side="left", fill="x", expand=True)
 
         self.add_label_button = ctk.CTkButton(
-            self.labels_frame, 
-            text="+", 
+            self.labels_frame,
+            text="+",
             width=30,
             command=self.create_label
         )
@@ -175,8 +191,8 @@ class TodoListGUI:
 
         for text, command in actions:
             btn = ctk.CTkButton(
-                self.context_menu, 
-                text=text, 
+                self.context_menu,
+                text=text,
                 command=create_command(command)
             )
             btn.pack(pady=2, padx=2)
@@ -187,7 +203,7 @@ class TodoListGUI:
 
     def show_context_menu(self, event):
         # Get task index from click position
-        index = int(self.task_listbox.index("@%d,%d" % (event.x, event.y)).split('.')[0]) - 1
+        index = int(self.task_listbox.index(f"@{event.x},{event.y}").split('.')[0]) - 1
         if 0 <= index < len(self.todo.tasks):
             self.selected_task_index = index
             # Position menu at cursor
@@ -197,7 +213,7 @@ class TodoListGUI:
 
     def handle_task_selection(self, event):
         self.context_menu.place_forget()
-        index = int(self.task_listbox.index("@%d,%d" % (event.x, event.y)).split('.')[0]) - 1
+        index = int(self.task_listbox.index(f"@{event.x},{event.y}").split('.')[0]) - 1
         if 0 <= index < len(self.todo.tasks):
             self.selected_task_index = index
             self.load_task_details(index)
@@ -227,7 +243,7 @@ class TodoListGUI:
             priority = self.priority_var.get() if self.priority_var.get() != "Priority" else None
             category = self.category_var.get() if self.category_var.get() != "Category" else None
             self.todo.add_task(
-                task, 
+                task,
                 priority=priority,
                 category=category
             )
@@ -249,8 +265,8 @@ class TodoListGUI:
             calendar_window.destroy()
 
         confirm_button = ctk.CTkButton(
-            calendar_window, 
-            text="Confirm", 
+            calendar_window,
+            text="Confirm",
             command=set_deadline
         )
         confirm_button.pack(pady=5)
@@ -278,9 +294,11 @@ class TodoListGUI:
     def run(self):
         self.window.mainloop()
 
+
 def main():
     app = TodoListGUI()
     app.run()
+
 
 if __name__ == "__main__":
     main()
