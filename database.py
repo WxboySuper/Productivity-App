@@ -4,22 +4,22 @@ import sqlite3
 class TodoDatabase:
     """
     Provides a TodoDatabase class that manages a SQLite database for storing and managing todo tasks.
-    
-    The TodoDatabase class handles the initialization of the database, 
-    creating the necessary tables if they don't already exist. 
-    It also provides methods for performing CRUD (Create, Read, Update, Delete) operations on tasks and labels, 
+
+    The TodoDatabase class handles the initialization of the database,
+    creating the necessary tables if they don't already exist.
+    It also provides methods for performing CRUD (Create, Read, Update, Delete) operations on tasks and labels,
     as well as methods for managing the relationships between tasks and labels.
-    
+
     The class uses parameterized SQL queries and input validation to prevent SQL injection vulnerabilities.
     """
 
     def __init__(self, db_file="todo.db"):
         """
         Initializes a TodoDatabase instance with the specified database file path.
-        
+
         Args:
             db_file (str): The path to the SQLite database file. Defaults to "todo.db" if not provided.
-        
+
         Raises:
             None
         """
@@ -29,8 +29,8 @@ class TodoDatabase:
     def __del__(self):
         """
         Closes the database connection when the TodoDatabase instance is destroyed.
-        
-        This method is called automatically when the TodoDatabase instance is garbage collected or explicitly deleted. 
+
+        This method is called automatically when the TodoDatabase instance is garbage collected or explicitly deleted.
         It ensures that the database connection is properly closed, even if an exception occurs during the closing process.
         """
         try:
@@ -41,14 +41,14 @@ class TodoDatabase:
     def init_database(self):
         """
         Initializes the database by creating the necessary tables if they don't already exist.
-        
+
         This method establishes a connection to the SQLite database file specified in the `self.db_file` attribute. It then creates three tables:
-        
+
         1. `tasks`: Stores the todo tasks with fields for title, completion status, deadline, category, notes, priority, and creation timestamp.
         2. `labels`: Stores the labels that can be associated with tasks, with fields for name and color.
         3. `task_labels`: A junction table that stores the many-to-many relationship between tasks and labels.
-        
-        The method uses parameterized SQL queries to create the tables, which helps prevent SQL injection vulnerabilities. 
+
+        The method uses parameterized SQL queries to create the tables, which helps prevent SQL injection vulnerabilities.
         If the tables already exist, the method simply skips their creation.
         """
         with sqlite3.connect(self.db_file) as conn:
@@ -87,19 +87,19 @@ class TodoDatabase:
     def update_task(self, task_id, **updates):
         """
         Updates a task in the database with the provided field updates.
-        
-        This method takes a task ID and a dictionary of field updates. 
-        It validates the updates against a whitelist of allowed fields and their expected types. 
+
+        This method takes a task ID and a dictionary of field updates.
+        It validates the updates against a whitelist of allowed fields and their expected types.
         It also performs additional validation on the `priority` field to ensure it is one of the allowed values.
-        
-        The method constructs a parameterized SQL query to update the task with the validated updates, 
+
+        The method constructs a parameterized SQL query to update the task with the validated updates,
         and executes the query using a database connection.
-        
+
         Args:
             task_id (int): The ID of the task to update.
-            **updates (dict): A dictionary of field updates to apply to the task. 
+            **updates (dict): A dictionary of field updates to apply to the task.
                               Allowed fields are `title`, `completed`, `deadline`, `category`, `notes`, and `priority`.
-        
+
         Raises:
             None
         """
@@ -149,12 +149,12 @@ class TodoDatabase:
     def get_task_labels(self, task_id):
         """
         Retrieves all labels associated with the specified task.
-        
+
         Args:
             task_id (int): The ID of the task to retrieve labels for.
-        
+
         Returns:
-            list: A list of tuples, where each tuple represents a label associated with the task. 
+            list: A list of tuples, where each tuple represents a label associated with the task.
                   The tuple contains the label's ID, name, and color.
         """
         with sqlite3.connect(self.db_file) as conn:
@@ -169,14 +169,14 @@ class TodoDatabase:
     def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
         """
         Adds a new task to the database.
-        
+
         Args:
             title (str): The title of the new task.
             deadline (Optional[datetime.datetime]): The deadline for the task.
             category (Optional[str]): The category of the task.
             notes (Optional[str]): Any notes or details about the task.
             priority (Optional[int]): The priority of the task, where 1 is the highest priority.
-        
+
         Returns:
             int: The ID of the newly created task.
         """
@@ -190,10 +190,10 @@ class TodoDatabase:
     def mark_completed(self, task_id):
         """
         Marks the task with the specified ID as completed in the database.
-        
+
         Args:
             task_id (int): The ID of the task to mark as completed.
-        
+
         Returns:
             None
         """
@@ -205,10 +205,10 @@ class TodoDatabase:
     def delete_task(self, task_id):
         """
         Deletes the task with the specified ID from the database.
-        
+
         Args:
             task_id (int): The ID of the task to delete.
-        
+
         Returns:
             None
         """
@@ -220,7 +220,7 @@ class TodoDatabase:
     def get_all_tasks(self):
         """
         Returns all tasks from the database, ordered by creation date in descending order.
-        
+
         Returns:
             list: A list of tuples, where each tuple represents a task and contains the task's column values.
         """
@@ -233,10 +233,10 @@ class TodoDatabase:
     def get_task(self, task_id):
         """
         Retrieves a task from the database by its ID.
-        
+
         Args:
             task_id (int): The ID of the task to retrieve.
-        
+
         Returns:
             tuple: A tuple containing the task's column values, or None if the task is not found.
         """
@@ -249,11 +249,11 @@ class TodoDatabase:
     def add_label(self, name, color="#1f538d"):
         """
         Adds a new label to the database.
-        
+
         Args:
             name (str): The name of the new label.
             color (str, optional): The color of the new label, in hexadecimal format. Defaults to "#1f538d".
-        
+
         Returns:
             int: The ID of the newly created label.
         """
@@ -266,10 +266,10 @@ class TodoDatabase:
     def delete_label(self, label_id):
         """
         Deletes a label from the database by its ID.
-        
+
         Args:
             label_id (int): The ID of the label to delete.
-        
+
         Returns:
             None
         """
@@ -281,7 +281,7 @@ class TodoDatabase:
     def get_all_labels(self):
         """
         Retrieves all labels from the database.
-        
+
         Returns:
             list: A list of tuples, where each tuple represents a label and contains the label's ID, name, and color.
         """
@@ -294,11 +294,11 @@ class TodoDatabase:
     def link_task_label(self, task_id, label_id):
         """
         Links a task to a label in the database.
-        
+
         Args:
             task_id (int): The ID of the task to link to the label.
             label_id (int): The ID of the label to link to the task.
-        
+
         Returns:
             None
         """
