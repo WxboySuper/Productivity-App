@@ -23,16 +23,12 @@ class TodoList:
     """
 
     def __init__(self):
-        """
-        Initializes the TodoList class with a TodoDatabase instance and an empty list of tasks.
-        """    
+        """Initializes the TodoList class with a TodoDatabase instance and an empty list of tasks."""    
         self.db = TodoDatabase()
         self.tasks = []
 
     def refresh_tasks(self):
-        """
-        Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute.
-        """        
+        """Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute."""        
         self.tasks = self.db.get_all_tasks()
 
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
