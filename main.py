@@ -23,12 +23,12 @@ class TodoList:
     """
 
     def __init__(self):
-        """Initializes the TodoList class with a TodoDatabase instance and an empty list of tasks."""    
+        """Initializes the TodoList class with a TodoDatabase instance and an empty list of tasks."""
         self.db = TodoDatabase()
         self.tasks = []
 
     def refresh_tasks(self):
-        """Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute."""        
+        """Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute."""
         self.tasks = self.db.get_all_tasks()
 
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
@@ -125,7 +125,8 @@ class TodoListGUI:
         which represents the graphical user interface (GUI) for a todo list application.
 
         It sets up the main window, creates the layout with a task list panel and a task detail panel,
-        and provides methods to manage tasks, including adding, updating, marking as completed, and deleting tasks. It also handles task selection, context menus, and task labeling.
+        and provides methods to manage tasks, including adding, updating, marking as completed, and deleting tasks.
+        It also handles task selection, context menus, and task labeling.
 
         The `run()` method starts the main event loop and displays the GUI.
         """
