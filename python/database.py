@@ -58,10 +58,11 @@ class TodoDatabase:
                 CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL CHECK(length(title) > 0),
+                    completed BOOLEAN DEFAULT FALSE,
                     deadline TEXT,
                     category TEXT,
                     notes TEXT,
-                    priority INTEGER
+                    priority TEXT CHECK(priority IN ('ASAP', '1', '2', '3', '4'))
                 )
             ''')
             cursor.execute('''
@@ -170,6 +171,9 @@ class TodoDatabase:
         """
         if not title or len(title.strip()) == 0:
             raise sqlite3.IntegrityError("Title cannot be empty")
+        
+        if priority is not None and (not isinstance(priority, (int, str)) or int(priority) < 0):
+            raise sqlite3.IntegrityError("Priority must be a non-negative integer")
         
         with sqlite3.connect(self.db_file) as conn:
             conn.row_factory = sqlite3.Row

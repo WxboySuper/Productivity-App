@@ -27,7 +27,7 @@ class TestTodoDatabase(unittest.TestCase):
             deadline=deadline_str,
             category="Work",
             notes="Important project deadline",
-            priority='1'
+            priority=1
         )
     
         with sqlite3.connect(self.db.db_file) as conn:
@@ -40,7 +40,7 @@ class TestTodoDatabase(unittest.TestCase):
         self.assertEqual(task[3], deadline_str)
         self.assertEqual(task[4], "Work")
         self.assertEqual(task[5], "Important project deadline")
-        self.assertEqual(task[6], '1')
+        self.assertEqual(task[6], 1)
 
     def test_add_task_with_partial_fields(self):
         task_id = self.db.add_task(
@@ -58,7 +58,7 @@ class TestTodoDatabase(unittest.TestCase):
         self.assertIsNone(task[3])  # deadline at index 2
         self.assertEqual(task[4], "Personal")  # category at index 3
         self.assertIsNone(task[5])  # notes at index 4
-        self.assertEqual(task[6], '2')
+        self.assertEqual(task[6], 2)
 
     def test_add_task_empty_title(self):
         with self.assertRaises(sqlite3.IntegrityError):
