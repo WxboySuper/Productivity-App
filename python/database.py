@@ -1,5 +1,5 @@
 import sqlite3
-
+from datetime import datetime
 
 class TodoDatabase:
     """
@@ -24,6 +24,7 @@ class TodoDatabase:
             None
         """
         self.db_file = db_file
+        self.conn = sqlite3.connect(self.db_file)
         self.init_database()
 
     def __del__(self):
@@ -53,17 +54,14 @@ class TodoDatabase:
         """
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
-            # These CREATE TABLE statements are safe as they don't use any user input
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL,
-                    completed BOOLEAN DEFAULT FALSE,
+                    title TEXT NOT NULL CHECK(length(title) > 0),
                     deadline TEXT,
                     category TEXT,
                     notes TEXT,
-                    priority TEXT CHECK(priority IN ('ASAP', '1', '2', '3', '4')),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    priority INTEGER
                 )
             ''')
             cursor.execute('''
@@ -169,24 +167,21 @@ class TodoDatabase:
     def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
         """
         Adds a new task to the database.
-
-        Args:
-            title (str): The title of the new task.
-            deadline (Optional[datetime.datetime]): The deadline for the task.
-            category (Optional[str]): The category of the task.
-            notes (Optional[str]): Any notes or details about the task.
-            priority (Optional[int]): The priority of the task, where 1 is the highest priority.
-
-        Returns:
-            int: The ID of the newly created task.
         """
-        query = '''INSERT INTO tasks (title, deadline, category, notes, priority)
-                  VALUES (?, ?, ?, ?, ?)'''
+        if not title or len(title.strip()) == 0:
+            raise sqlite3.IntegrityError("Title cannot be empty")
+        
         with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            
+            # Store deadline as string in SQLite
+            if isinstance(deadline, datetime):
+                deadline = deadline.strftime('%Y-%m-%d %H:%M:%S')
+            
+            query = "INSERT INTO tasks (title, deadline, category, notes, priority) VALUES (?, ?, ?, ?, ?)"
             cursor.execute(query, (title, deadline, category, notes, priority))
             return cursor.lastrowid
-
     def mark_completed(self, task_id):
         """
         Marks the task with the specified ID as completed in the database.
@@ -306,3 +301,25 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id, label_id))
+    
+    def clear_task_labels(self, task_id):
+        query = "DELETE FROM task_labels WHERE task_id = ?"
+        with self.conn:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (task_id,))
+
+    def add_label(self, name, color=None):
+        query = """
+        INSERT OR IGNORE INTO labels (name, color)
+        VALUES (?, ?)
+        """
+        with self.conn:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (name, color))
+            
+        # Get the label_id (whether it was just inserted or already existed)
+        query = "SELECT id FROM labels WHERE name = ?"
+        cursor = self.conn.cursor()
+        cursor.execute(query, (name,))
+        return cursor.fetchone()[0]
+

@@ -1,6 +1,11 @@
-/__pycache__
-/.pytest_cache
-/tests/__pycache__
+python/__pycache__
+python/.pytest_cache
+python/tests/__pycache__
 /.vscode
+/node_modules
 todo.db
 test_todo.db
+__pycache__
+.pytest_cache
+.venv
+/python/.vscode
