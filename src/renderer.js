@@ -106,23 +106,26 @@ async function refreshTaskList() {
         tasks.forEach(task => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${task.title}</td>
-                <td>${task.deadline || '-'}</td>
-                <td>${task.category || '-'}</td>
-                <td>${task.priority || '-'}</td>
-                <td>${task.completed ? 'Done' : 'Pending'}</td>
+                <td>${task[1] || ''}</td>
+                <td>${task[3] || 'No deadline'}</td>
+                <td>${task[4] || 'Uncategorized'}</td>
+                <td>${task[6] || 'None'}</td>
+                <td>${task[2] === 1 ? 'Completed' : 'Pending'}</td>
             `;
             tbody.appendChild(row);
         });
     } catch (error) {
-        console.log('Refreshing task list');
+        console.log('Error refreshing task list:', error);
     }
 }
-
 // Call refreshTaskList when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    refreshTaskList();
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('Renderer script loaded');
+    
+    // Small delay to ensure proper data loading
+    setTimeout(() => {
+        refreshTaskList();
+    }, 100);
     
     const addTaskButton = document.getElementById('add-task-button');
     const taskInput = document.getElementById('taskInput');
