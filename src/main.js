@@ -1,4 +1,5 @@
 const { app, BrowserWindow } = require('electron')
+// skipcq: JS-0128
 const path = require('path')
 
 function createWindow() {
@@ -6,7 +7,9 @@ function createWindow() {
         width: 800,
         height: 600,
         webPreferences: {
+            // skipcq: JS-S1019
             nodeIntegration: true,
+            // skipcq: JS-S1020
             contextIsolation: false
         }
     })

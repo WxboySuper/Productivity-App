@@ -245,23 +245,6 @@ class TodoDatabase:
             cursor.execute(query, (task_id,))
             return cursor.fetchone()
 
-    def add_label(self, name, color="#1f538d"):
-        """
-        Adds a new label to the database.
-
-        Args:
-            name (str): The name of the new label.
-            color (str, optional): The color of the new label, in hexadecimal format. Defaults to "#1f538d".
-
-        Returns:
-            int: The ID of the newly created label.
-        """
-        query = 'INSERT INTO labels (name, color) VALUES (?, ?)'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (name, color))
-            return cursor.lastrowid
-
     def delete_label(self, label_id):
         """
         Deletes a label from the database by its ID.

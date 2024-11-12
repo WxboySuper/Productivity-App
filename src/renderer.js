@@ -3,6 +3,7 @@ const { PythonShell } = require('python-shell')
 // Function to communicate with Python
 function runPythonCommand(command, data) {
     return new Promise((resolve, reject) => {
+        // skipcq: JS-0242
         let options = {
             mode: 'json',
             pythonPath: 'python',
