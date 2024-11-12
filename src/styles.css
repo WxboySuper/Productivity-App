@@ -76,3 +76,31 @@ body {
       from { opacity: 0; }
       to { opacity: 1; }
   }
+
+
+  /* Table */
+  /* Table styling with generous spacing */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+th, td {
+    padding: 12px 24px;
+    text-align: left;
+}
+
+/* Add some visual separation between columns */
+td {
+    border-right: 1px solid #6d6d6d;
+}
+
+td:last-child {
+    border-right: none;
+}
+
+/* Optional: hover effect on rows */
+tr:hover {
+    background-color: #c7c7c7;
+}
