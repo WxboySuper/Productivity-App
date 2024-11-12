@@ -54,17 +54,18 @@ class TodoDatabase:
         """
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL CHECK(length(title) > 0),
+                    title TEXT NOT NULL,
                     completed BOOLEAN DEFAULT FALSE,
-                    deadline TEXT,
+                    deadline DATETIME,
                     category TEXT,
                     notes TEXT,
-                    priority TEXT CHECK(priority IN ('ASAP', '1', '2', '3', '4'))
+                    priority INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            ''')
+            """)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS labels (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,7 +83,6 @@ class TodoDatabase:
                 )
             ''')
             conn.commit()
-
     def update_task(self, task_id, **updates):
         """
         Updates a task in the database with the provided field updates.
