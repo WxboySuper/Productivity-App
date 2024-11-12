@@ -1,6 +1,3 @@
-import customtkinter as ctk
-from datetime import datetime, timedelta
-from tkcalendar import Calendar
 from database import TodoDatabase
 
 
