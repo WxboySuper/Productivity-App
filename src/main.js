@@ -4,8 +4,8 @@ const path = require('path')
 
 function createWindow() {
     const win = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: 1600,
+        height: 1000,
         webPreferences: {
             // skipcq: JS-S1019
             nodeIntegration: true,
@@ -15,8 +15,10 @@ function createWindow() {
     })
 
     win.loadFile('src/index.html')
+    
+    // Open DevTools automatically
+    win.webContents.openDevTools()
 }
-
 app.whenReady().then(() => {
     createWindow()
 })

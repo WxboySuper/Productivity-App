@@ -9,7 +9,6 @@ currently being supported with security updates.
 | ------- | ------------------ |
 | Latest Code  | :white_check_mark: |
 
-
 ## Reporting a Vulnerability
 
 Use Issues or Private Reporting
