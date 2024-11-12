@@ -11,14 +11,17 @@
     <body>
         <div id="task-list">
             <h2>My Tasks</h2>
+
             <div class="feedback-container">
                 <div id="success-indicator" class="indicator">✓ Task added successfully</div>
                 <div id="error-indicator" class="indicator">⚠ Error adding task</div>
             </div>
+
             <div class="quick-add">
                 <input type="text" id="taskInput" placeholder="Quick add task..." required>
                 <button id="add-task-button">+</button>
             </div>
+
             <table>
                 <thead>
                     <tr>
@@ -32,6 +35,7 @@
                 <tbody id="tasks-tbody">
                 </tbody>
             </table>
+            
         </div>
         <script src="renderer.js"></script>
     </body>
