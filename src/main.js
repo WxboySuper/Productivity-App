@@ -15,8 +15,11 @@ function createWindow() {
     })
 
     win.loadFile('src/index.html')
+    console.log('Window created and loaded')
+    
+    // Open DevTools automatically
+    win.webContents.openDevTools()
 }
-
 app.whenReady().then(() => {
     createWindow()
 })
