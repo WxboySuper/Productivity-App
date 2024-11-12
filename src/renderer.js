@@ -28,4 +28,21 @@ async function loadTasks() {
     }
 }
 
-// Add more UI interaction fucntions here
+// Function to display tasks in the UI
+function displayTasks(tasks) {
+    const taskList = document.getElementById('taskList')
+    taskList.innerHTML = ''
+    
+    tasks.forEach(task => {
+        const taskItem = document.createElement('div')
+        taskItem.className = 'task-item'
+        taskItem.innerHTML = `
+            <span>${task.title}</span>
+            <span>${task.status}</span>
+        `
+        taskList.appendChild(taskItem)
+    })
+}
+
+document.addEventListener('DOMContentLoaded', loadTasks)
+module.exports = { loadTasks}
