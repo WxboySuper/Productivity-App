@@ -6,9 +6,26 @@ on:
 jobs:
     specific_review_requested:
         runs-on: ubuntu-latest
+        permissions:
+          contents: write
+          pull-requests: write
+          repository-projects: write
+          id-token: write
+
         steps:
           - name: Add Reviewers
             uses: madrapps/add-reviewers@v1
             with:
               token: ${{ secrets.GITHUB_TOKEN }}
               reviewers: wxboysuper
+          - name: Checkout
+            uses: actions/checkout@v4
+          - uses: actions/github-script@v6
+            with:
+              script: |
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: 'Added WeatherboySuper as a Reviewer!'
+                })
