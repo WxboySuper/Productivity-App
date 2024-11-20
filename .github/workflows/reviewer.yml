@@ -1,14 +1,11 @@
-name: Auto assign reviewers on labeled action
-on: 
+name: Auto Assign Reviewer
+on:
+  pull_request:
+    types: [opened, reopened]
 
 jobs:
-    add-reviewers-on-label:
-        runs-on : ubuntu-latest
-        steps :
-            - name: Assign reviewers
-              uses: ks-keshava-rao/add-reviewers@v1
-              with:
-                 reviewers: 60972009
-                 token: "${{ secrets.GITHUB_TOKEN }}"
-                 debugMode: true
-              id: assign_reviewers
+    specific_review_requested:
+        runs-on: ubuntu-latest
+        if: ${{ github.event.requested.name == 'wxboysuper'}}
+        steps:
+          - run: echo 'A review from WeatherboySuper was requested'
