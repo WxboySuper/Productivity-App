@@ -6,6 +6,5 @@ on:
 jobs:
     specific_review_requested:
         runs-on: ubuntu-latest
-        if: ${{ github.event.requested.name == 'wxboysuper'}}
         steps:
           - run: echo 'A review from WeatherboySuper was requested'
