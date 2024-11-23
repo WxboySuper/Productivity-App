@@ -17,3 +17,5 @@ server.spec
 python-3.12.7-amd64.exe
 todo_bridge.spec
 innosetup.iss
+package-lock.json
+/Productivity-App-win32-x64

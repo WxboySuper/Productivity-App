@@ -14,6 +14,7 @@
   "author": "WeatherboySuper",
   "license": "ISC",
   "dependencies": {
+    "electron-builder": "^25.1.8",
     "electron-squirrel-startup": "^1.0.1",
     "python-shell": "^5.0.0"
   },
@@ -26,6 +27,7 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.5.0",
     "@electron-forge/plugin-fuses": "^7.5.0",
     "@electron/fuses": "^1.8.0",
+    "@electron/packager": "^18.3.6",
     "electron": "^33.2.0"
   },
   "config": {
