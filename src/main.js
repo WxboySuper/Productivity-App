@@ -1,6 +1,7 @@
 const { app, BrowserWindow } = require('electron')
 const { spawn } = require('child_process')
 const path = require('path')
+const log = require('electron-log')
 
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
@@ -30,11 +31,11 @@ function startBackendProcesses() {
     
     // Log output from both processes
     serverProcess.stdout.on('data', (data) => {
-        console.log(`Server: ${data}`)
+        log.info(`Server: ${data}`)
     })
     
     bridgeProcess.stdout.on('data', (data) => {
-        console.log(`Bridge: ${data}`)
+        log.info(`Bridge: ${data}`)
     })
 }function createWindow() {
     startBackendProcesses()
