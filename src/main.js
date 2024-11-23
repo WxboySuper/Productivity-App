@@ -8,11 +8,11 @@ function startBackendProcesses() {
     
     // Get the base directory for executables
     const baseDir = app.isPackaged 
-        ? path.dirname(app.getPath('exe'))
-        : path.join(__dirname, '../dist')
+        ? path.join(path.dirname(app.getPath('exe')), 'src', 'python')
+        : path.join(__dirname, '../dist/src/python')
         
-    const serverPath = path.join(baseDir, 'server.exe')
-    const bridgePath = path.join(baseDir, 'todo_bridge.exe')
+    const serverPath = path.join(baseDir, 'server.py')
+    const bridgePath = path.join(baseDir, 'todo_bridge.py')
     
     const serverProcess = spawn(serverPath, [], {
         env: {
