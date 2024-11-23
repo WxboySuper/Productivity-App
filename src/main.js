@@ -2,6 +2,8 @@ const { app, BrowserWindow } = require('electron')
 const { spawn } = require('child_process')
 const path = require('path')
 const log = require('electron-log')
+const { PythonShell } = require('python-shell');
+const pythonPath = 'C:\\Users\\super\\AppData\\Local\\Programs\\Python\\Python312\\python.exe'
 
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
@@ -14,10 +16,6 @@ function startBackendProcesses() {
         
     const serverScript = path.join(baseDir, 'server.py')
     const bridgeScript = path.join(baseDir, 'todo_bridge.py')
-    
-    const pythonPath = app.isPackaged
-        ? path.join(process.resourcesPath, 'python', 'python.exe')
-        : 'python'
 
     const serverProcess = spawn(pythonPath, [serverScript], {
         env: {
@@ -41,7 +39,22 @@ function startBackendProcesses() {
     bridgeProcess.stdout.on('data', (data) => {
         log.info(`Bridge: ${data}`)
     })
-}function createWindow() {
+
+    // skipcq: JS-0125
+    const pyshell = new PythonShell('app.py', {
+        mode: 'text',
+        pythonPath: pythonPath,
+        pythonOptions: ['-u'],
+        scriptPath: path.join(__dirname, '../src/python')  // Points to src/python directory
+    });
+
+    pyshell.on('error', function (err) {
+        // skipcq: JS-0002
+        console.log('Flask server error:', err);
+    });
+}
+
+function createWindow() {
     startBackendProcesses()
     const mainWindow = new BrowserWindow({
         width: 800,
