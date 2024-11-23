@@ -9,3 +9,8 @@ __pycache__
 .pytest_cache
 .venv
 /python/.vscode
+out/
+forge.config.js
+build/
+dist/
+server.spec

@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+import os
 
 class TodoDatabase:
     """
@@ -17,12 +18,11 @@ class TodoDatabase:
         """
         Initializes a TodoDatabase instance with the specified database file path.
 
-        Args:
-            db_file (str): The path to the SQLite database file. Defaults to "todo.db" if not provided.
-
-        Raises:
-            None
-        """
+          Raises:
+              None
+          """
+        if db_file is None:
+            db_file = os.getenv('DB_PATH', 'todo.db')
         self.db_file = db_file
         self.conn = sqlite3.connect(self.db_file)
         self.init_database()
