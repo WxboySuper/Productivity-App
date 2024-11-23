@@ -15,14 +15,18 @@ function startBackendProcesses() {
     const serverScript = path.join(baseDir, 'server.py')
     const bridgeScript = path.join(baseDir, 'todo_bridge.py')
     
-    const serverProcess = spawn('python', [serverScript], {
+    const pythonPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'python', 'python.exe')
+        : 'python'
+
+    const serverProcess = spawn(pythonPath, [serverScript], {
         env: {
             ...process.env,
             DB_PATH: dbPath
         }
     })
-    
-    const bridgeProcess = spawn('python', [bridgeScript], {
+
+    const bridgeProcess = spawn(pythonPath, [bridgeScript], {
         env: {
             ...process.env,
             DB_PATH: dbPath

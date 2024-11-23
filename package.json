@@ -8,7 +8,8 @@
     "start": "electron-forge start",
     "build": "electron-builder",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "release": "electron-builder"
   },
   "keywords": [],
   "author": "WeatherboySuper",
@@ -30,6 +31,31 @@
     "@electron/packager": "^18.3.6",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "generateUpdatesFilesForAllChannels": true,
+    "win": {
+      "publish": "github"
+    },
+    "files": [
+      "**/*",
+      "src/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "src/python",
+        "to": "src/python",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python-embedded",
+        "to": "python"
+      }
+    ]
+  },
+  "publish": {
+    "provider": "github",
+    "releaseType": "release"
   },
   "config": {
     "forge": {
