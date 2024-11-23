@@ -24,16 +24,22 @@ function startBackendProcesses() {
         }
     })
 
+    serverProcess.stdout.on('data', (data) => {
+        log.info(`Server: ${data}`)
+        if (data.includes('Running on')) {
+            log.info('Flask server started successfully')
+        }
+    })
+
+    serverProcess.stderr.on('data', (data) => {
+        log.error(`Server Error: ${data}`)
+    })
+
     const bridgeProcess = spawn(pythonPath, [bridgeScript], {
         env: {
             ...process.env,
             DB_PATH: dbPath
         }
-    })
-    
-    // Log output from both processes
-    serverProcess.stdout.on('data', (data) => {
-        log.info(`Server: ${data}`)
     })
     
     bridgeProcess.stdout.on('data', (data) => {
@@ -43,11 +49,13 @@ function startBackendProcesses() {
     // skipcq: JS-0125
     const pyshell = new PythonShell('app.py', {
         mode: 'text',
+        // skipcq: JS-0240
         pythonPath: pythonPath,
         pythonOptions: ['-u'],
         scriptPath: path.join(__dirname, '../src/python')  // Points to src/python directory
     });
 
+    // skipcq: JS-0241
     pyshell.on('error', function (err) {
         // skipcq: JS-0002
         console.log('Flask server error:', err);

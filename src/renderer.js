@@ -1,19 +1,23 @@
 const { PythonShell } = require('python-shell')
+const path = require('path')
+
+const scriptPath = process.env.NODE_ENV === 'production' 
+    ? path.join(__dirname, 'resources', 'src', 'python')
+    : path.join(__dirname, 'src', 'python')
 
 // Function to communicate with Python
 function runPythonCommand(command, data) {
     return new Promise((resolve, reject) => {
-        // skipcq: JS-0242
         let options = {
             mode: 'json',
             pythonPath: 'python',
-            scriptPath: "./python",
+            scriptPath: scriptPath,
             args: [command, JSON.stringify(data)]
         }
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
             if (err) reject(err)
-                resolve(results[0])
+            resolve(results[0])
         })
     })
 }
@@ -180,4 +184,16 @@ async function createTask(taskData) {
     }
 
     return response.json();
+}
+
+async function fetchWithRetry(url, options, maxRetries = 3) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const response = await fetch(url, options);
+            return response;
+        } catch (error) {
+            if (i === maxRetries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
 }
