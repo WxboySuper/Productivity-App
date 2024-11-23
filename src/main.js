@@ -11,11 +11,14 @@ function startBackendProcesses() {
     
     // Get the base directory for Python scripts
     const baseDir = app.isPackaged 
-        ? path.join(path.dirname(app.getPath('exe')), 'src', 'python')
+        ? path.join(process.resourcesPath, 'src', 'python')
         : path.join(__dirname, '../src/python')
         
     const serverScript = path.join(baseDir, 'server.py')
     const bridgeScript = path.join(baseDir, 'todo_bridge.py')
+
+    log.info('Python scripts directory:', baseDir)
+    log.info('Server script path:', serverScript)
 
     const serverProcess = spawn(pythonPath, [serverScript], {
         env: {

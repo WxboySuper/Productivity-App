@@ -2,8 +2,8 @@ const { PythonShell } = require('python-shell')
 const path = require('path')
 
 const scriptPath = process.env.NODE_ENV === 'production' 
-    ? path.join(__dirname, 'resources', 'src', 'python')
-    : path.join(__dirname, 'src', 'python')
+    ? path.join(process.resourcesPath, 'src', 'python')
+    : path.join(__dirname, 'python')
 
 // Function to communicate with Python
 function runPythonCommand(command, data) {

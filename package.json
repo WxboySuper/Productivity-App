@@ -33,6 +33,7 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
+    "asar": false,
     "generateUpdatesFilesForAllChannels": true,
     "win": {
       "publish": "github"
