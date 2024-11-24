@@ -49,7 +49,7 @@ class TodoDatabase:
         """
         try:
             self.conn.close()
-            log.info("Database connection closed.")
+            log.info("database.py - Database connection closed.")
         except Exception:
             pass
 
@@ -97,7 +97,7 @@ class TodoDatabase:
                 )
             ''')
             conn.commit()
-            log.info("Database initialized.")
+            log.info("database.py - Database initialized.")
 
     def update_task(self, task_id, **updates):
         """
@@ -160,7 +160,7 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, values)
-            log.info("Task %s updated with updates: %s", task_id, validated_updates)
+            log.info("database.py - Task %s updated with updates: %s", task_id, validated_updates)
 
     def get_task_labels(self, task_id):
         """
@@ -180,7 +180,7 @@ class TodoDatabase:
                 JOIN task_labels tl ON l.id = tl.label_id
                 WHERE tl.task_id = ?
             ''', (task_id,))
-            log.info("Retrieved labels for task: %s", task_id)
+            log.info("database.py - Retrieved labels for task: %s", task_id)
             return cursor.fetchall()
 
     def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
@@ -203,7 +203,7 @@ class TodoDatabase:
             
             query = "INSERT INTO tasks (title, deadline, category, notes, priority) VALUES (?, ?, ?, ?, ?)"
             cursor.execute(query, (title, deadline, category, notes, priority))
-            log.info("Task added with title: %s", title)
+            log.info("database.py - Task added with title: %s", title)
             return cursor.lastrowid
 
     def mark_completed(self, task_id):
@@ -220,7 +220,7 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id,))
-            log.info("Task %s marked as completed", task_id)
+            log.info("database.py - Task %s marked as completed", task_id)
 
     def delete_task(self, task_id):
         """
@@ -236,7 +236,7 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id,))
-            log.info("Task %s deleted", task_id)
+            log.info("database.py - Task %s deleted", task_id)
 
     def get_all_tasks(self):
         """
@@ -249,7 +249,7 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query)
-            log.info("Retrieved all tasks")
+            log.info("database.py - Retrieved all tasks")
             return cursor.fetchall()
 
     def get_task(self, task_id):
@@ -266,7 +266,7 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id,))
-            log.info("Retrieved task: %s", task_id)
+            log.info("database.py - Retrieved task: %s", task_id)
             return cursor.fetchone()
 
     def delete_label(self, label_id):
@@ -283,7 +283,7 @@ class TodoDatabase:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM task_labels WHERE label_id = ?', (label_id,))
             cursor.execute('DELETE FROM labels WHERE id = ?', (label_id,))
-            log.info("Label %s deleted", label_id)
+            log.info("database.py - Label %s deleted", label_id)
 
     def get_all_labels(self):
         """
@@ -296,7 +296,7 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query)
-            log.info("Retrieved all labels")
+            log.info("database.py - Retrieved all labels")
             return cursor.fetchall()
 
     def link_task_label(self, task_id, label_id):
@@ -314,14 +314,14 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id, label_id))
-            log.info("Linked task %s to label %s", task_id, label_id)
+            log.info("database.py - Linked task %s to label %s", task_id, label_id)
     
     def clear_task_labels(self, task_id):
         query = "DELETE FROM task_labels WHERE task_id = ?"
         with self.conn:
             cursor = self.conn.cursor()
             cursor.execute(query, (task_id,))
-            log.info("Cleared task labels for task %s", task_id)
+            log.info("databse.py - Cleared task labels for task %s", task_id)
 
     def add_label(self, name, color=None):
         query = """
@@ -336,6 +336,6 @@ class TodoDatabase:
         query = "SELECT id FROM labels WHERE name = ?"
         cursor = self.conn.cursor()
         cursor.execute(query, (name,))
-        log.info("Label %s added with color: %s", name, color)
+        log.info("databse.py - Label %s added with color: %s", name, color)
         return cursor.fetchone()[0]
 

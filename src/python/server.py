@@ -8,5 +8,5 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 if __name__ == '__main__':
-    log.info("Starting Flask server...")
+    log.info("server.py - Starting Flask server...")
     app.run(port=5000)
