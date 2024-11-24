@@ -16,8 +16,15 @@ function runPythonCommand(command, data) {
         }
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
-            if (err) reject(err)
-            resolve(results[0])
+            if (err) {  
+            reject(new Error(`Failed to execute Python command '${command}': ${err.message}`));  
+            return;  
+            }  
+            if (!results || results.length === 0) {  
+                reject(new Error(`No results returned from Python command '${command}'`));  
+                return;  
+            }  
+            resolve(results[0]);
         })
     })
 }
@@ -187,13 +194,31 @@ async function createTask(taskData) {
 }
 
 async function fetchWithRetry(url, options, maxRetries = 3) {
+    const timeout = options.timeout || 5000;
     for (let i = 0; i < maxRetries; i++) {
         try {
-            const response = await fetch(url, options);
+            const controller = new AbortController();  
+            const timeoutId = setTimeout(() => controller.abort(), timeout);  
+            
+            const response = await fetch(url, {  
+                ...options,  
+                signal: controller.signal  
+            });  
+            
+            clearTimeout(timeoutId);  
+            
+            if (!response.ok) {  
+                throw new Error(`HTTP error! status: ${response.status}`);  
+            }  
             return response;
         } catch (error) {
+            if (error.name === 'AbortError') {  
+                throw new Error(`Request timeout after ${timeout}ms`);  
+            }
             if (i === maxRetries - 1) throw error;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Exponential backoff with jitter  
+            const delay = Math.min(1000 * Math.pow(2, i) + Math.random() * 1000, 10000);  
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 }
