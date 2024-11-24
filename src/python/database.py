@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+import os
 
 class TodoDatabase:
     """
@@ -17,12 +18,16 @@ class TodoDatabase:
         """
         Initializes a TodoDatabase instance with the specified database file path.
 
-        Args:
-            db_file (str): The path to the SQLite database file. Defaults to "todo.db" if not provided.
-
-        Raises:
-            None
-        """
+          Raises:
+              sqlite3.OperationalError: If the database connection fails or if there are permission issues with the database file.
+          """
+        if db_file is None:
+            db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
+        db_dir = os.path.dirname(os.path.abspath(db_file))  
+        if not os.path.exists(db_dir):  
+            os.makedirs(db_dir, exist_ok=True)  
+        if not os.access(db_dir, os.W_OK):  
+            raise PermissionError(f"No write permission for database directory: {db_dir}")
         self.db_file = db_file
         self.conn = sqlite3.connect(self.db_file)
         self.init_database()

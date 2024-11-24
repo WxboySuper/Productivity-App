@@ -1,11 +1,7 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import unittest
 import sqlite3
 from datetime import datetime
-from database import TodoDatabase
+from ..database import TodoDatabase
 
 class TestTodoDatabase(unittest.TestCase):
     def setUp(self):

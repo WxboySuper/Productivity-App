@@ -1,19 +1,30 @@
 const { PythonShell } = require('python-shell')
+const path = require('path')
+
+const scriptPath = process.env.NODE_ENV === 'production' 
+    ? path.join(process.resourcesPath, 'src', 'python')
+    : path.join(__dirname, 'python')
 
 // Function to communicate with Python
 function runPythonCommand(command, data) {
     return new Promise((resolve, reject) => {
-        // skipcq: JS-0242
-        let options = {
+        const options = {
             mode: 'json',
             pythonPath: 'python',
-            scriptPath: "./python",
+            scriptPath,
             args: [command, JSON.stringify(data)]
         }
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
-            if (err) reject(err)
-                resolve(results[0])
+            if (err) {  
+            reject(new Error(`Failed to execute Python command '${command}': ${err.message}`));  
+            return;  
+            }  
+            if (!results || results.length === 0) {  
+                reject(new Error(`No results returned from Python command '${command}'`));  
+                return;  
+            }  
+            resolve(results[0]);
         })
     })
 }
@@ -22,40 +33,24 @@ function runPythonCommand(command, data) {
 async function loadTasks() {
     try {
         const tasks = await runPythonCommand('get_tasks', {})
+        // skipcq: JS-W1038
         displayTasks(tasks)
     } catch (error) {
         console.error('Error loading tasks:', error)
     }
 }
 
-// Function to display tasks in the UI
-function displayTasks(tasks) {
-    const taskList = document.getElementById('taskList')
-    taskList.innerHTML = ''
-    
-    tasks.forEach(task => {
-        const taskItem = document.createElement('div')
-        taskItem.className = 'task-item'
-        taskItem.innerHTML = `
-            <span>${task.title}</span>
-            <span>${task.status}</span>
-        `
-        taskList.appendChild(taskItem)
-    })
-}
-
 document.addEventListener('DOMContentLoaded', loadTasks)
 module.exports = { loadTasks}
 
 window.addEventListener('load', displayTasks);
-
 function displayTasks() {
     fetch('http://localhost:5000/tasks')
         .then(response => response.json())
         .then(tasks => {
             const tbody = document.getElementById('tasks-tbody');
             tbody.innerHTML = '';
-            
+        
             tasks.forEach(task => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -69,14 +64,14 @@ function displayTasks() {
             });
         });
 }
-function showIndicator(type, message) {
+    function showIndicator(type, message) {
     const successIndicator = document.getElementById('success-indicator');
     const errorIndicator = document.getElementById('error-indicator');
-    
+
     // Reset both indicators
     successIndicator.style.display = 'none';
     errorIndicator.style.display = 'none';
-    
+
     if (type === 'success') {
         successIndicator.textContent = `✓ ${message}`;
         successIndicator.style.display = 'block';
@@ -119,7 +114,8 @@ async function refreshTaskList() {
     }
 }
 // Call refreshTaskList when the page loads
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // skipcq: JS-0002
     console.log('Renderer script loaded');
     
     // Small delay to ensure proper data loading
@@ -149,6 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
             });
 
+            // skipcq: JS-0002
             console.log('Task created successfully');
             showIndicator('success', 'Task added successfully!');
             taskInput.value = '';
@@ -165,6 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
+// skipcq: JS-0128
 async function createTask(taskData) {
     const response = await fetch('http://localhost:5000/tasks', {
         method: 'POST',
@@ -180,4 +178,35 @@ async function createTask(taskData) {
     }
 
     return response.json();
+}
+
+// skipcq: JS-0045, JS-0128
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+    const timeout = options.timeout || 5000;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const controller = new AbortController();  
+            const timeoutId = setTimeout(() => controller.abort(), timeout);  
+            
+            const response = await fetch(url, {  
+                ...options,  
+                signal: controller.signal  
+            });  
+            
+            clearTimeout(timeoutId);  
+            
+            if (!response.ok) {  
+                throw new Error(`HTTP error! status: ${response.status}`);  
+            }  
+            return response;
+        } catch (error) {
+            if (error.name === 'AbortError') {  
+                throw new Error(`Request timeout after ${timeout}ms`);  
+            }
+            if (i === maxRetries - 1) throw error;
+            // Exponential backoff with jitter  
+            const delay = Math.min(1000 * Math.pow(2, i) + Math.random() * 1000, 10000);  
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
 }

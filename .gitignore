@@ -1,11 +1,27 @@
-python/__pycache__
-python/.pytest_cache
-python/tests/__pycache__
-/.vscode
-/node_modules
+# Random Files in Main Directory
+forge.config.js
 todo.db
-test_todo.db
-__pycache__
-.pytest_cache
-.venv
-/python/.vscode
+
+# Development  Folders
+/.venv
+/.vscode
+/src/python/.vscode
+/node_modules
+/python-embedded
+/releases
+/dist
+
+# Python Cachee Folders
+/src/python/__pycache__
+/src/python/.pytest_cache
+/src/python/tests/__pycache__
+
+# Additional Patterns
+.env*
+.idea/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.key
+*.pem
