@@ -1,24 +1,27 @@
-src/python/__pycache__
-src/python/.pytest_cache
-src/python/tests/__pycache__
-/.vscode
-/node_modules
-todo.db
-test_todo.db
-__pycache__
-.pytest_cache
-.venv
-/src/python/.vscode
-out/
+# Random Files in Main Directory
 forge.config.js
-build/
-dist/
-server.spec
-python-3.12.7-amd64.exe
-todo_bridge.spec
-innosetup.iss
-package-lock.json
-/Productivity-App-win32-x64
+todo.db
+
+# Development  Folders
+/.venv
+/.vscode
+/src/python/.vscode
+/node_modules
 /python-embedded
-/python
 /releases
+/dist
+
+# Python Cachee Folders
+/src/python/__pycache__
+/src/python/.pytest_cache
+/src/python/tests/__pycache__
+
+# Additional Patterns
+.env*
+.idea/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.key
+*.pem

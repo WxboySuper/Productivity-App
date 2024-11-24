@@ -5,6 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "test": "jest",
+    "start": "electron .",
     "build": "electron-builder --dir",
     "release": "electron-builder --publish always"
   },
