@@ -15,3 +15,13 @@ todo.db
 /src/python/__pycache__
 /src/python/.pytest_cache
 /src/python/tests/__pycache__
+
+# Additional Patterns
+.env*
+.idea/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.key
+*.pem
