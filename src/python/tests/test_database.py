@@ -67,3 +67,9 @@ class TestTodoDatabase(unittest.TestCase):
     def test_add_task_invalid_priority(self):
         with self.assertRaises(sqlite3.IntegrityError):
             self.db.add_task("Test Task", priority=-1)
+    
+    def test_add_task(self):  
+        db = TodoDatabase(db_file=":memory:")  
+        task = {"title": "Test Task"}  
+        task_id = db.add_task(task)  
+        self.assertIsNotNone(task_id)
