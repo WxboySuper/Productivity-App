@@ -50,6 +50,10 @@ function startBackendProcesses() {
         log.info(`Bridge: ${data}`)
     })
 
+    bridgeProcess.stderr.on('data', (data) => {  
+        log.error(`Bridge Error: ${data}`)  
+    }) 
+
     // skipcq: JS-0125
     const pyshell = new PythonShell('app.py', {
         mode: 'text',
