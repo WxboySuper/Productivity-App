@@ -3,7 +3,7 @@ const { spawn } = require('child_process')
 const path = require('path')
 const log = require('electron-log')
 const { PythonShell } = require('python-shell');
-const pythonPath = 'C:\\Users\\super\\AppData\\Local\\Programs\\Python\\Python312\\python.exe'
+const pythonPath = process.env.PYTHON_PATH || 'python'
 
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
@@ -28,8 +28,9 @@ function startBackendProcesses() {
     })
 
     serverProcess.stdout.on('data', (data) => {
-        log.info(`Server: ${data}`)
-        if (data.includes('Running on')) {
+        const output = data.toString();  
+        log.info(`Server: ${output}`)  
+        if (output.includes('Running on')) {
             log.info('Flask server started successfully')
         }
     })
@@ -71,10 +72,8 @@ function createWindow() {
         width: 800,
         height: 600,
         webPreferences: {
-            // skipcq: JS-S1019
-            nodeIntegration: true,
-            // skipcq: JS-S1020
-            contextIsolation: false
+            nodeIntegration: false,  
+            contextIsolation: true 
         }
     })
     mainWindow.loadFile('src/index.html')
