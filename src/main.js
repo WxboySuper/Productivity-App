@@ -30,13 +30,20 @@ function startBackendProcesses() {
             ...process.env,
             DB_PATH: dbPath
         }
+    }).on('error', (err) => {
+        log.error('Failed to start server process:', err)
     })
+
+    let serverReady = false
+    let bridgeReady = false
 
     serverProcess.stdout.on('data', (data) => {
         const message = data.toString();
         log.info(`Server: ${message}`)
         if (message.includes('Running on')) {
             log.info('Flask server started successfully')
+            serverReady = true;
+            checkAllProcessesReady()
         }
     })
 
@@ -53,6 +60,20 @@ function startBackendProcesses() {
     
     bridgeProcess.stdout.on('data', (data) => {
         log.info(`Bridge: ${data.toString()}`)
+        if (data.toString().includes('Bridge ready')) {
+            bridgeReady = true;
+            checkAllProcessesReady();
+        }
+    })
+
+    function checkAllProcessesReady() {
+        if (serverReady && bridgeReady) {
+            log.info('All backend processes are ready')
+        }
+    }
+
+    bridgeProcess.stderr.on('data', (data) => {
+        log.error(`Bridge Error: ${data.toString()}`)
     })
 
     // skipcq: JS-0125
@@ -83,10 +104,9 @@ function createWindow() {
         width: 800,
         height: 600,
         webPreferences: {
-            // skipcq: JS-S1019
-            nodeIntegration: true,
-            // skipcq: JS-S1020
-            contextIsolation: false
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
         }
     })
     mainWindow.loadFile('src/index.html')
