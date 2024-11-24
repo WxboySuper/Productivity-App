@@ -13,23 +13,23 @@ let bridgeProcess = null
 
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData');
-    log.info('User data path:', userDataPath);
+    log.info('main.js - User data path:', userDataPath);
     
     const dbPath = path.join(userDataPath, 'todo.db');
-    log.info('Database path:', dbPath);
+    log.info('main.js - Database path:', dbPath);
     
     const baseDir = app.isPackaged 
         ? path.join(process.resourcesPath, 'src', 'python')
         : path.join(__dirname, '../src/python');
     
-    log.info('Base directory:', baseDir);
-    log.info('Python executable:', pythonPath);
+    log.info('main.js - Base directory:', baseDir);
+    log.info('main.js - Python executable:', pythonPath);
     
     const serverScript = path.join(baseDir, 'server.py')
     const bridgeScript = path.join(baseDir, 'todo_bridge.py')
 
-    log.info('Python scripts directory:', baseDir)
-    log.info('Server script path:', serverScript)
+    log.info('main.js - Python scripts directory:', baseDir)
+    log.info('main.js - Server script path:', serverScript)
 
     serverProcess = spawn(pythonPath, [serverScript], {
         env: {
@@ -37,23 +37,23 @@ function startBackendProcesses() {
             DB_PATH: dbPath
         }
     }).on('error', (err) => {
-        log.error('Failed to start server process:', err)
+        log.error('main.js - Failed to start server process:', err)
     })
 
     let serverReady = false
     let bridgeReady = false
 
     serverProcess.stdout.on('data', (data) => {
-        log.info(`Server output: ${data}`);
+        log.info(`main.js - Server output: ${data}`);
         if (data.toString().includes('Running on')) {
-            log.info('Flask server started successfully')
+            log.info('main.js - Flask server started successfully')
             serverReady = true;
             checkAllProcessesReady()
         }
     })
 
     serverProcess.stderr.on('data', (data) => {
-        log.error(`Server Error: ${data.toString()}`)
+        log.error(`main.js - Server Error: ${data.toString()}`)
     })
 
     bridgeProcess = spawn(pythonPath, [bridgeScript], {
@@ -64,7 +64,7 @@ function startBackendProcesses() {
     })
     
     bridgeProcess.stdout.on('data', (data) => {
-        log.info(`Bridge: ${data.toString()}`)
+        log.info(`main.js - Bridge: ${data.toString()}`)
         if (data.toString().includes('Bridge ready')) {
             bridgeReady = true;
             checkAllProcessesReady();
@@ -73,12 +73,12 @@ function startBackendProcesses() {
 
     function checkAllProcessesReady() {
         if (serverReady && bridgeReady) {
-            log.info('All backend processes are ready')
+            log.info('main.js - All backend processes are ready')
         }
     }
 
     bridgeProcess.stderr.on('data', (data) => {
-        log.error(`Bridge Error: ${data.toString()}`)
+        log.error(`main.js - Bridge Error: ${data.toString()}`)
     })
 
     // skipcq: JS-0125
@@ -93,19 +93,19 @@ function startBackendProcesses() {
     // skipcq: JS-0241
     pyshell.on('error', function (err) {
         // skipcq: JS-0002
-        console.log('Flask server error:', err);
+        console.log('main.js - Flask server error:', err);
     });
 }
 
 app.on('before-quit', () => {
-    log.info('Application shutting down');
+    log.info('main.js - Application shutting down');
     if (serverProcess) serverProcess.kill()
     if (bridgeProcess) bridgeProcess.kill()
-    log.info('Backend processes terminated');
+    log.info('main.js - Backend processes terminated');
 })
 
 function createWindow() {
-    log.info('Creating main window');
+    log.info('main.js - Creating main window');
     startBackendProcesses()
     const mainWindow = new BrowserWindow({
         width: 800,
@@ -117,16 +117,16 @@ function createWindow() {
         }
     })
     mainWindow.loadFile('src/index.html')
-    log.info('Main window created and loaded');
+    log.info('main.js - Main window created and loaded');
 }
 
 app.whenReady().then(() => {
-    log.info('Application ready, starting up...');
+    log.info('main.js - Application ready, starting up...');
     createWindow();
 })
 
 app.on('window-all-closed', () => {
-    log.info('All windows closed');
+    log.info('main.js - All windows closed');
     if (process.platform !== 'darwin') {
         app.quit()
     }
