@@ -1,6 +1,7 @@
 import sqlite3
 from datetime import datetime
 import os
+import os.path
 
 class TodoDatabase:
     """
@@ -22,7 +23,12 @@ class TodoDatabase:
               None
           """
         if db_file is None:
-            db_file = os.getenv('DB_PATH', 'todo.db')
+            db_file = os.getenv('DB_PATH', 'self.DEFAULT_DB_FILE')
+            if not db_file.endswith('.db'):
+                raise ValueError("DB_PATH must point to a .db file")
+            db_file = os.path.normpath(db_file)
+            if os.path.isabs(db_file) or '..' in db_file:
+                raise ValueError("DB_PATH must be a relative path without directory traversal")
         self.db_file = db_file
         self.conn = sqlite3.connect(self.db_file)
         self.init_database()
