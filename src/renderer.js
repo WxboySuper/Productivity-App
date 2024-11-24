@@ -17,6 +17,9 @@ function runPythonCommand(command, data) {
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
             if (err) reject(err)
+            if (!results || results.length === 0) {
+                reject(new Error('No results returned from Python script'));
+            }
             resolve(results[0])
         })
     })
