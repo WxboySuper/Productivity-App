@@ -22,7 +22,7 @@ class TodoDatabase:
               sqlite3.OperationalError: If the database connection fails or if there are permission issues with the database file.
           """
         if db_file is None:
-            db_file = os.getenv('DB_PATH', 'todo.db')
+            db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
         db_dir = os.path.dirname(os.path.abspath(db_file))  
         if not os.path.exists(db_dir):  
             os.makedirs(db_dir, exist_ok=True)  
