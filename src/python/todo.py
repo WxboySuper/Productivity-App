@@ -56,7 +56,10 @@ class TodoList:
         """
         task_id = self.db.add_task(task, deadline, category, notes, priority)
         self.refresh_tasks()
-        log.info("todo.py - Task '%s' added successfully!", task)
+        log.info("Task added successfully! ID: %d, Description: %.50s%s",
+                 task_id,
+                 task,
+                 "..." if len(task) > 50 else "")
         return task_id
 
     def mark_completed(self, task_index):
@@ -90,12 +93,19 @@ class TodoList:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
         """
         if 0 <= task_index < len(self.tasks):
-            task_id = self.tasks[task_index][0]
-            self.db.update_task(task_id, **updates)
-            self.refresh_tasks()
-            log.info("todo.py - Task updated successfully!")
+            task_name = self.tasks[task_index][1]
+            try:
+                task_id = self.tasks[task_index][0]
+                self.db.update_task(task_id, **updates)
+                self.refresh_tasks()
+                log.info("Task '%s' updated successfully with changes: %s",
+                         task_name, updates)
+            except Exception as e:
+                log.error("Failed to update task '%s': %s", task_name, str(e))
+                raise
         else:
-            log.error("todo.py - Invalid task index!")
+            log.error("Invalid task index: %d (valid range: 0-%d)",
+                      task_index, len(self.tasks) - 1)
 
     def delete_task(self, task_index):
         """
@@ -109,9 +119,16 @@ class TodoList:
         """
         if 0 <= task_index < len(self.tasks):
             task_id = self.tasks[task_index][0]
-            task = self.db.get_task(task_id)
-            self.db.delete_task(task_id)
-            self.refresh_tasks()
-            log.info("todo.py - Task '%s' deleted successfully!", task[1])
+            try:
+                task_name = self.tasks[task_index][1]
+                self.db.delete_task(task_id)
+                self.refresh_tasks()
+                log.info("Task '%s' (ID: %d) deleted successfully",
+                         task_name, task_id)
+            except Exception as e:
+                log.error("Failed to delete taadk (ID: %d): %s",
+                          task_id, str(e))
+                raise
         else:
-            log.error("todo.py - Invalid task index!")
+            log.error("Invalid task index: %d (valid range: 0-%d)",
+                      task_index, len(self.tasks) - 1)
