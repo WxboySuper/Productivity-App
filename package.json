@@ -5,8 +5,8 @@
   "main": "src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "electron-builder",
-    "release": "electron-builder"
+    "build": "electron-builder --dir",
+    "release": "electron-builder --publish always"
   },
   "keywords": [],
   "author": "WeatherboySuper",
