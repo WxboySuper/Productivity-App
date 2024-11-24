@@ -61,6 +61,8 @@ function startBackendProcesses() {
             ...process.env,
             DB_PATH: dbPath
         }
+    }).on('error', (err) => {
+        log.error('main.js - Failed to start bridge process:', err)
     })
     
     bridgeProcess.stdout.on('data', (data) => {
@@ -92,8 +94,7 @@ function startBackendProcesses() {
 
     // skipcq: JS-0241
     pyshell.on('error', function (err) {
-        // skipcq: JS-0002
-        console.log('main.js - Flask server error:', err);
+        log.error('main.js - Flask server error:', err);
     });
 }
 
