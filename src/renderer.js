@@ -8,10 +8,10 @@ const scriptPath = process.env.NODE_ENV === 'production'
 // Function to communicate with Python
 function runPythonCommand(command, data) {
     return new Promise((resolve, reject) => {
-        let options = {
+        const options = {
             mode: 'json',
             pythonPath: 'python',
-            scriptPath: scriptPath,
+            scriptPath,
             args: [command, JSON.stringify(data)]
         }
 
@@ -33,6 +33,7 @@ function runPythonCommand(command, data) {
 async function loadTasks() {
     try {
         const tasks = await runPythonCommand('get_tasks', {})
+        // skipcq: JS-W1038
         displayTasks(tasks)
     } catch (error) {
         console.error('Error loading tasks:', error)
@@ -113,7 +114,8 @@ async function refreshTaskList() {
     }
 }
 // Call refreshTaskList when the page loads
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // skipcq: JS-0002
     console.log('Renderer script loaded');
     
     // Small delay to ensure proper data loading
@@ -143,6 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
             });
 
+            // skipcq: JS-0002
             console.log('Task created successfully');
             showIndicator('success', 'Task added successfully!');
             taskInput.value = '';
@@ -159,6 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
+// skipcq: JS-0128
 async function createTask(taskData) {
     const response = await fetch('http://localhost:5000/tasks', {
         method: 'POST',
@@ -176,7 +180,8 @@ async function createTask(taskData) {
     return response.json();
 }
 
-async function fetchWithRetry(url, options, maxRetries = 3) {
+// skipcq: JS-0045, JS-0128
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
     const timeout = options.timeout || 5000;
     for (let i = 0; i < maxRetries; i++) {
         try {
