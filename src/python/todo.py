@@ -1,5 +1,11 @@
 from database import TodoDatabase
+import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
+log = logging.getLogger(__name__)
 
 class TodoList:
     """
@@ -32,6 +38,7 @@ class TodoList:
     def refresh_tasks(self):
         """Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute."""
         self.tasks = self.db.get_all_tasks()
+        log.info("todo.py - Refreshing tasks...")
 
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
         """
@@ -49,7 +56,7 @@ class TodoList:
         """
         task_id = self.db.add_task(task, deadline, category, notes, priority)
         self.refresh_tasks()
-        print(f"Task '{task}' added successfully!")
+        log.info("todo.py - Task '%s' added successfully!", task)
         return task_id
 
     def mark_completed(self, task_index):
@@ -66,9 +73,9 @@ class TodoList:
             task_id = self.tasks[task_index][0]
             self.db.mark_completed(task_id)
             self.refresh_tasks()
-            print("Task marked as completed!")
+            log.info("todo.py - Task marked as completed!")
         else:
-            print("Invalid task index!")
+            log.error("todo.py - Invalid task index!")
 
     def update_task(self, task_index, **updates):
         """
@@ -86,9 +93,9 @@ class TodoList:
             task_id = self.tasks[task_index][0]
             self.db.update_task(task_id, **updates)
             self.refresh_tasks()
-            print("Task updated successfully!")
+            log.info("todo.py - Task updated successfully!")
         else:
-            print("Invalid task index!")
+            log.error("todo.py - Invalid task index!")
 
     def delete_task(self, task_index):
         """
@@ -105,6 +112,6 @@ class TodoList:
             task = self.db.get_task(task_id)
             self.db.delete_task(task_id)
             self.refresh_tasks()
-            print(f"Task '{task[1]}' deleted successfully!")
+            log.info("todo.py - Task '%s' deleted successfully!", task[1])
         else:
-            print("Invalid task index!")
+            log.error("todo.py - Invalid task index!")
