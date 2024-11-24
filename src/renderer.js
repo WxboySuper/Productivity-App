@@ -39,34 +39,17 @@ async function loadTasks() {
     }
 }
 
-// Function to display tasks in the UI
-function displayTasks(tasks) {
-    const taskList = document.getElementById('taskList')
-    taskList.innerHTML = ''
-    
-    tasks.forEach(task => {
-        const taskItem = document.createElement('div')
-        taskItem.className = 'task-item'
-        taskItem.innerHTML = `
-            <span>${task.title}</span>
-            <span>${task.status}</span>
-        `
-        taskList.appendChild(taskItem)
-    })
-}
-
 document.addEventListener('DOMContentLoaded', loadTasks)
 module.exports = { loadTasks}
 
 window.addEventListener('load', displayTasks);
-
 function displayTasks() {
     fetch('http://localhost:5000/tasks')
         .then(response => response.json())
         .then(tasks => {
             const tbody = document.getElementById('tasks-tbody');
             tbody.innerHTML = '';
-            
+        
             tasks.forEach(task => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -80,14 +63,14 @@ function displayTasks() {
             });
         });
 }
-function showIndicator(type, message) {
+    function showIndicator(type, message) {
     const successIndicator = document.getElementById('success-indicator');
     const errorIndicator = document.getElementById('error-indicator');
-    
+
     // Reset both indicators
     successIndicator.style.display = 'none';
     errorIndicator.style.display = 'none';
-    
+
     if (type === 'success') {
         successIndicator.textContent = `✓ ${message}`;
         successIndicator.style.display = 'block';
