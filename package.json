@@ -4,7 +4,6 @@
   "description": "Task Management Application",
   "main": "src/main.js",
   "scripts": {
-    "test": "jest",
     "start": "electron .",
     "build": "electron-builder --dir",
     "release": "electron-builder --publish always"
@@ -46,9 +45,5 @@
         "to": "python"
       }
     ]
-  },
-  "publish": {
-    "provider": "github",
-    "releaseType": "release"
   }
 }
