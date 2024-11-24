@@ -1,12 +1,18 @@
 const { PythonShell } = require('python-shell')
 const path = require('path')
+const log = require('electron-log')
+
+log.transports.file.level = 'info'
+log.info('renderer.js - Script initialized')
 
 const scriptPath = process.env.NODE_ENV === 'production' 
     ? path.join(process.resourcesPath, 'src', 'python')
     : path.join(__dirname, 'python')
 
-// Function to communicate with Python
+log.info('renderer.js - Script path set to:', scriptPath)
+
 function runPythonCommand(command, data) {
+    log.info('renderer.js - Running Python command:', command)
     return new Promise((resolve, reject) => {
         let options = {
             mode: 'json',
@@ -14,29 +20,34 @@ function runPythonCommand(command, data) {
             scriptPath: scriptPath,
             args: [command, JSON.stringify(data)]
         }
+        log.debug('renderer.js - Python options:', options)
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
             if (err) reject(err)
             if (!results || results.length === 0) {
+                log.error('renderer.js - Python command error:', err)
                 reject(new Error('No results returned from Python script'));
             }
+            log.info('renderer.js - Python command completed successfully')
             resolve(results[0])
         })
     })
 }
 
-// Example: Load tasks
 async function loadTasks() {
+    log.info('renderer.js - Loading tasks')
     try {
         const tasks = await runPythonCommand('get_tasks', {})
         displayTasks(tasks)
+        log.info('renderer.js - Tasks loaded successfully')
     } catch (error) {
+        log.error('renderer.js - Error loading tasks:', error)
         console.error('Error loading tasks:', error)
     }
 }
 
-// Function to display tasks in the UI
 function displayTasks(tasks) {
+    log.info('renderer.js - Displaying tasks')
     const taskList = document.getElementById('taskList')
     taskList.innerHTML = ''
     
@@ -49,6 +60,7 @@ function displayTasks(tasks) {
         `
         taskList.appendChild(taskItem)
     })
+    log.info('renderer.js - Tasks displayed')
 }
 
 document.addEventListener('DOMContentLoaded', loadTasks)
@@ -103,36 +115,36 @@ function showIndicator(type, message) {
 }
 
 async function refreshTaskList() {
+    log.info('renderer.js - Refreshing task list')
     try {
-        const response = await fetch('http://localhost:5000/tasks');
-        const tasks = await response.json();
+        const response = await fetch('http://localhost:5000/tasks')
+        const tasks = await response.json()
         
-        const tbody = document.getElementById('tasks-tbody');
-        tbody.innerHTML = '';
+        const tbody = document.getElementById('tasks-tbody')
+        tbody.innerHTML = ''
         
         tasks.forEach(task => {
-            const row = document.createElement('tr');
+            const row = document.createElement('tr')
             row.innerHTML = `
                 <td>${task[1] || ''}</td>
                 <td>${task[3] || 'No deadline'}</td>
                 <td>${task[4] || 'Uncategorized'}</td>
                 <td>${task[6] || 'None'}</td>
                 <td>${task[2] === 1 ? 'Completed' : 'Pending'}</td>
-            `;
-            tbody.appendChild(row);
-        });
+            `
+            tbody.appendChild(row)
+        })
+        log.info('renderer.js - Task list refreshed successfully')
     } catch (error) {
-        console.log('Error refreshing task list:', error);
+        log.error('renderer.js - Error refreshing task list:', error)
     }
 }
 // Call refreshTaskList when the page loads
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Renderer script loaded');
-    
-    // Small delay to ensure proper data loading
+document.addEventListener('DOMContentLoaded', () => {
+    log.info('renderer.js - DOM content loaded')
     setTimeout(() => {
-        refreshTaskList();
-    }, 100);
+        refreshTaskList()
+    }, 100)
     
     const addTaskButton = document.getElementById('add-task-button');
     const taskInput = document.getElementById('taskInput');
