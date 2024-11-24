@@ -17,20 +17,12 @@
     "python-shell": "^5.0.0"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.5.0",
-    "@electron-forge/maker-deb": "^7.5.0",
-    "@electron-forge/maker-rpm": "^7.5.0",
-    "@electron-forge/maker-squirrel": "^7.5.0",
-    "@electron-forge/maker-zip": "^7.5.0",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.5.0",
-    "@electron-forge/plugin-fuses": "^7.5.0",
     "@electron/fuses": "^1.8.0",
-    "@electron/packager": "^18.3.6",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "asar": false,
+    "asar": true,
     "generateUpdatesFilesForAllChannels": true,
     "win": {
       "publish": "github"
