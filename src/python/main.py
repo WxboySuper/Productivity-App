@@ -49,7 +49,4 @@ def create_task():
         return jsonify({"id": task_id}), 201
     except ValueError as e:
         log.error("Invalid task data: %s", str(e))
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        log.error("Failed to create task: %s", str(e))
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid task data provided"}), 400
