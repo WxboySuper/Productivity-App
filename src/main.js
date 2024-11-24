@@ -1,24 +1,30 @@
 const { app, BrowserWindow } = require('electron')
 const { spawn } = require('child_process')
 const path = require('path')
+
 const log = require('electron-log')
+log.transports.file.level = 'info';
+
 const { PythonShell } = require('python-shell');
 const pythonPath = 'python'
 
-// skipcq: JS-0119
-let serverProcess
-// skipcq: JS-0119
-let bridgeProcess
+let serverProcess = null
+let bridgeProcess = null
 
 function startBackendProcesses() {
-    const userDataPath = app.getPath('userData')
-    const dbPath = path.join(userDataPath, 'todo.db')
+    const userDataPath = app.getPath('userData');
+    log.info('User data path:', userDataPath);
     
-    // Get the base directory for Python scripts
+    const dbPath = path.join(userDataPath, 'todo.db');
+    log.info('Database path:', dbPath);
+    
     const baseDir = app.isPackaged 
         ? path.join(process.resourcesPath, 'src', 'python')
-        : path.join(__dirname, '../src/python')
-        
+        : path.join(__dirname, '../src/python');
+    
+    log.info('Base directory:', baseDir);
+    log.info('Python executable:', pythonPath);
+    
     const serverScript = path.join(baseDir, 'server.py')
     const bridgeScript = path.join(baseDir, 'todo_bridge.py')
 
@@ -38,9 +44,8 @@ function startBackendProcesses() {
     let bridgeReady = false
 
     serverProcess.stdout.on('data', (data) => {
-        const message = data.toString();
-        log.info(`Server: ${message}`)
-        if (message.includes('Running on')) {
+        log.info(`Server output: ${data}`);
+        if (data.toString().includes('Running on')) {
             log.info('Flask server started successfully')
             serverReady = true;
             checkAllProcessesReady()
@@ -93,12 +98,14 @@ function startBackendProcesses() {
 }
 
 app.on('before-quit', () => {
+    log.info('Application shutting down');
     if (serverProcess) serverProcess.kill()
     if (bridgeProcess) bridgeProcess.kill()
-    log.info('Backend processes killed')
+    log.info('Backend processes terminated');
 })
 
 function createWindow() {
+    log.info('Creating main window');
     startBackendProcesses()
     const mainWindow = new BrowserWindow({
         width: 800,
@@ -110,10 +117,16 @@ function createWindow() {
         }
     })
     mainWindow.loadFile('src/index.html')
+    log.info('Main window created and loaded');
 }
-app.whenReady().then(createWindow)
+
+app.whenReady().then(() => {
+    log.info('Application ready, starting up...');
+    createWindow();
+})
 
 app.on('window-all-closed', () => {
+    log.info('All windows closed');
     if (process.platform !== 'darwin') {
         app.quit()
     }
