@@ -1,7 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron')
 const log = require('electron-log')
 
-log.transports.file.level = 'info'
+// Configure production logging
+log.transports.file.level = process.env.NODE_ENV === 'production' ? 'info' : 'debug'
+log.transports.file.maxSize = 10 * 1024 * 1024 // 10MB
+log.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}] [{level}] {text}'
 log.info('preload.js - Preload script initializing')
 
 // Define the API methods
