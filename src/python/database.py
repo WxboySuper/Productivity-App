@@ -30,9 +30,15 @@ class TodoDatabase:
               None
           """
         if db_file is None:
-            db_file = os.getenv('DB_PATH', 'self.DEFAULT_DB_FILE')
+            DEFAULT_DB_FILE = 'todo.db'
+            db_file = os.getenv('DB_PATH', 'DEFAULT_DB_FILE')
             if not db_file.endswith('.db'):
                 raise ValueError("DB_PATH must point to a .db file")
+            directory = os.path.dirname(db_file) or '.'
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            elif not os.access(directory, os.W_OK):
+                raise ValueError(f"Directory {directory} is not writable")
             db_file = os.path.normpath(db_file)
             if os.path.isabs(db_file) or '..' in db_file:
                 raise ValueError("DB_PATH must be a relative path without directory traversal")
@@ -318,24 +324,22 @@ class TodoDatabase:
     
     def clear_task_labels(self, task_id):
         query = "DELETE FROM task_labels WHERE task_id = ?"
-        with self.conn:
+        with sqlite3.connect(self.db_file) as conn:
             cursor = self.conn.cursor()
             cursor.execute(query, (task_id,))
             log.info("databse.py - Cleared task labels for task %s", task_id)
 
     def add_label(self, name, color=None):
-        query = """
-        INSERT OR IGNORE INTO labels (name, color)
-        VALUES (?, ?)
-        """
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute(query, (name, color))
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            # Insert the label
+            cursor.execute("""
+                INSERT OR IGNORE INTO labels (name, color)
+                VALUES (?, ?)
+                """, (name, color))
             
-        # Get the label_id (whether it was just inserted or already existed)
-        query = "SELECT id FROM labels WHERE name = ?"
-        cursor = self.conn.cursor()
-        cursor.execute(query, (name,))
-        log.info("databse.py - Label %s added with color: %s", name, color)
-        return cursor.fetchone()[0]
+            # Get the label_id
+            cursor.execute("SELECT id FROM labels WHERE name = ?", (name,))
+            log.info("database.py - Label %s added with color: %s", name, color)
+            return cursor.fetchone()[0]
 
