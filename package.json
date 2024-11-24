@@ -5,10 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron-forge start",
     "build": "electron-builder",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
     "release": "electron-builder"
   },
   "keywords": [],
@@ -57,25 +54,5 @@
   "publish": {
     "provider": "github",
     "releaseType": "release"
-  },
-  "config": {
-    "forge": {
-      "packagerConfig": {
-        "asar": true,
-        "extraResource": [
-          "dist/server.exe"
-        ]
-      },
-      "makers": [
-        {
-          "name": "@electron-forge/maker-squirrel",
-          "config": {
-            "name": "Productivity",
-            "authors": "WeatherboySuper",
-            "exe": "Productivity.exe"
-          }
-        }
-      ]
-    }
   }
 }
