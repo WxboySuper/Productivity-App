@@ -3,7 +3,7 @@ const { spawn } = require('child_process')
 const path = require('path')
 const log = require('electron-log')
 const { PythonShell } = require('python-shell');
-const pythonPath = 'C:\\Users\\super\\AppData\\Local\\Programs\\Python\\Python312\\python.exe'
+const pythonPath = 'python'
 
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
@@ -28,14 +28,15 @@ function startBackendProcesses() {
     })
 
     serverProcess.stdout.on('data', (data) => {
-        log.info(`Server: ${data}`)
-        if (data.includes('Running on')) {
+        const message = data.toString();
+        log.info(`Server: ${message}`)
+        if (message.includes('Running on')) {
             log.info('Flask server started successfully')
         }
     })
 
     serverProcess.stderr.on('data', (data) => {
-        log.error(`Server Error: ${data}`)
+        log.error(`Server Error: ${data.toString()}`)
     })
 
     const bridgeProcess = spawn(pythonPath, [bridgeScript], {
@@ -46,7 +47,7 @@ function startBackendProcesses() {
     })
     
     bridgeProcess.stdout.on('data', (data) => {
-        log.info(`Bridge: ${data}`)
+        log.info(`Bridge: ${data.toString()}`)
     })
 
     // skipcq: JS-0125
