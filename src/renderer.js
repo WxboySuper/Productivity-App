@@ -126,11 +126,11 @@ async function refreshTaskList() {
         tasks.forEach(task => {
             const row = document.createElement('tr')
             row.innerHTML = `
-                <td>${task[1] || ''}</td>
-                <td>${task[3] || 'No deadline'}</td>
-                <td>${task[4] || 'Uncategorized'}</td>
-                <td>${task[6] || 'None'}</td>
-                <td>${task[2] === 1 ? 'Completed' : 'Pending'}</td>
+                <td>${task.title || ''}</td>
+                <td>${task.deadline || 'No deadline'}</td>
+                <td>${task.category || 'Uncategorized'}</td>
+                <td>${task.priority || 'None'}</td>
+                <td>${task.completed ? 'Completed' : 'Pending'}</td>
             `
             tbody.appendChild(row)
         })
@@ -142,9 +142,15 @@ async function refreshTaskList() {
 // Call refreshTaskList when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     log.info('renderer.js - DOM content loaded')
-    setTimeout(() => {
-        refreshTaskList()
-    }, 100)
+    async function initializeApp() {
+        try {
+            await fetchWithRetry('http://localhost:5000/health', {method: 'GET'});
+            await refreshTaskList();
+        } catch (error) {
+            log.error('renderer.js - Failed to initialize app:', error);
+        }
+    }
+    initializeApp();
     
     const addTaskButton = document.getElementById('add-task-button');
     const taskInput = document.getElementById('taskInput');
