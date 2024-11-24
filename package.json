@@ -4,7 +4,7 @@
   "description": "Task Management Application",
   "main": "src/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "build": "electron-builder --dir",
     "release": "electron-builder --publish always"
   },
@@ -19,7 +19,8 @@
   "devDependencies": {
     "@electron/fuses": "^1.8.0",
     "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "jest": "^29.7.0"
   },
   "build": {
     "asar": true,
@@ -35,7 +36,9 @@
       {
         "from": "src/python",
         "to": "src/python",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "python-embedded",
