@@ -2,7 +2,6 @@ import unittest
 import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase
-import os
 
 class TestTodoDatabase(unittest.TestCase):
     """Test suite for TodoDatabase class functionality."""
@@ -45,11 +44,6 @@ class TestTodoDatabase(unittest.TestCase):
         """Initialize test database before each test case."""
         self.db = TodoDatabase(self.TEST_DB_NAME)
         self.db.init_database()
-
-    def tearDown(self):
-        """Clean up test database after each test."""
-        if os.path.exists(self.TEST_DB_NAME):
-            os.remove(self.TEST_DB_NAME)
     
     def test_add_task_basic(self):
         """Verify basic task creation with minimal required fields."""
