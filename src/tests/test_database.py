@@ -1,7 +1,7 @@
 import unittest
 import sqlite3
 from datetime import datetime
-from ..database import TodoDatabase
+from ..python.database import TodoDatabase
 
 class TestTodoDatabase(unittest.TestCase):
     def setUp(self):
