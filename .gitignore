@@ -1,6 +1,7 @@
 # Random Files in Main Directory
 forge.config.js
 todo.db
+test_todo.db
 
 # Development  Folders
 /.venv
