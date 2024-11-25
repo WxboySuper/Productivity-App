@@ -47,7 +47,7 @@ class TestTodoDatabase(unittest.TestCase):
         self.db.init_database()
 
     def tearDown(self):
-        "Clean up test database after each test."""
+        """Clean up test database after each test."""
         if os.path.exists(self.TEST_DB_NAME):
             os.remove(self.TEST_DB_NAME)
     
