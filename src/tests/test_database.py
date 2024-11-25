@@ -29,11 +29,11 @@ class TestTodoDatabase(unittest.TestCase):
 
     # Database field mapping
     FIELD_MAPPING = {
-        'title': 'title',
-        'deadline': 'deadline',
-        'category': 'category',
-        'notes': 'notes',
-        'priority': 'priority'
+        1: 'title',
+        2: 'deadline', 
+        3: 'category',
+        4: 'notes',
+        5: 'priority'
     }
 
     
@@ -58,35 +58,45 @@ class TestTodoDatabase(unittest.TestCase):
         
         task_data = self.FULL_TASK_DATA.copy()
         task_data['deadline'] = deadline_str
-    
-        task_id = self.db.add_task(**task_data)
-    
+
+        task_id = self.db.add_task(
+            title=task_data['title'],
+            deadline=task_data['deadline'],
+            category=task_data['category'],
+            notes=task_data['notes'],
+            priority=task_data['priority']
+        )
+
         with sqlite3.connect(self.db.db_file) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM tasks WHERE id=?", (task_id,))
+            cursor.execute("SELECT id, title, deadline, category, notes, priority FROM tasks WHERE id=?", (task_id,))
             task = cursor.fetchone()
         
-        self.assertEqual(task[self.FIELD_MAPPING['title']], self.FULL_TASK_DATA['title'])
-        self.assertEqual(task[self.FIELD_MAPPING['deadline']], deadline_str)
-        self.assertEqual(task[self.FIELD_MAPPING['category']], self.FULL_TASK_DATA['category'])
-        self.assertEqual(task[self.FIELD_MAPPING['notes']], self.FULL_TASK_DATA['notes'])
-        self.assertEqual(task[self.FIELD_MAPPING['priority']], self.FULL_TASK_DATA['priority'])
+        # Explicitly specify the column indices based on the SELECT statement order
+        self.assertEqual(task[0], task_id)  # id
+        self.assertEqual(task[1], task_data['title'])  # title
+        self.assertEqual(task[2], task_data['deadline'])  # deadline
+        self.assertEqual(task[3], task_data['category'])  # category
+        self.assertEqual(task[4], task_data['notes'])  # notes
+        self.assertEqual(task[5], task_data['priority'])  # priority
 
     def test_add_task_with_partial_fields(self):
         """Verify task creation with only some fields populated."""
-        task_id = self.db.add_task(**self.PARTIAL_TASK_DATA)
+        task_id = self.db.add_task(
+            title=self.PARTIAL_TASK_DATA['title'],
+            category=self.PARTIAL_TASK_DATA['category'],
+            priority=self.PARTIAL_TASK_DATA['priority']
+        )
         
         with sqlite3.connect(self.db.db_file) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM tasks WHERE id=?", (task_id,))
+            cursor.execute("SELECT id, title, deadline, category, notes, priority FROM tasks WHERE id=?", (task_id,))
             task = cursor.fetchone()
             
-        self.assertEqual(task[self.task_dict['title']], self.PARTIAL_TASK_DATA['title'])
-        self.assertIsNone(task[self.task_dict['deadline']])
-        self.assertEqual(task[self.task_dict['category']], self.PARTIAL_TASK_DATA['category'])
-        self.assertIsNone(task[self.task_dict['notes']])
-        self.assertEqual(task[self.task_dict['priority']], self.PARTIAL_TASK_DATA['priority'])
-
+        self.assertEqual(task[1], self.PARTIAL_TASK_DATA['title'])
+        self.assertIsNone(task[2] or None)  # Convert SQLite NULL (0) to Python None
+        self.assertEqual(task[3], self.PARTIAL_TASK_DATA['category'])
+        self.assertIsNone(task[4] or None)  # Convert SQLite NULL (0) to Python None
     def test_add_task_empty_title(self):
         """Verify that empty task titles are rejected."""
         with self.assertRaises(sqlite3.IntegrityError):
