@@ -1,7 +1,7 @@
 import unittest
 import sqlite3
 from datetime import datetime
-from ..python.database import TodoDatabase
+from src.python.database import TodoDatabase
 
 class TestTodoDatabase(unittest.TestCase):
     """Test suite for TodoDatabase class functionality."""
