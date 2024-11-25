@@ -37,10 +37,6 @@ class TestTodoDatabase(unittest.TestCase):
         'priority': 'priority'
     }
 
-    cursor.execute("SELECT * FROM tasks WHERE id=?", (task_id,))
-    columns = [description[0] for description in cursor.description]
-    task_dict = dict(zip(columns, cursor.fetchone()))
-    self.assertEqual(task_dict['title'], expected_title)
     
     # Invalid data
     INVALID_PRIORITY = -1
