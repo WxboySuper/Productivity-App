@@ -91,7 +91,7 @@ class TestTodoDatabase(unittest.TestCase):
             cursor.execute("SELECT * FROM tasks WHERE id=?", (task_id,))
             task = cursor.fetchone()
             
-        self.assertEqual(task[self.task_dict['title'], self.PARTIAL_TASK_DATA['title'])
+        self.assertEqual(task[self.task_dict['title'], self.PARTIAL_TASK_DATA['title']])
         self.assertIsNone(task[self.task_dict['deadline']])
         self.assertEqual(task[self.task_dict['category']], self.PARTIAL_TASK_DATA['category'])
         self.assertIsNone(task[self.task_dict['notes']])
