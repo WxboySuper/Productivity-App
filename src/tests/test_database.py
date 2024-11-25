@@ -72,11 +72,11 @@ class TestTodoDatabase(unittest.TestCase):
             cursor.execute("SELECT * FROM tasks WHERE id=?", (task_id,))
             task = cursor.fetchone()
         
-        self.assertEqual(task[self.task_dict['title']], self.FULL_TASK_DATA['title'])
-        self.assertEqual(task[self.task_dict['deadline']], deadline_str)
-        self.assertEqual(task[self.task_dict['category']], self.FULL_TASK_DATA['category'])
-        self.assertEqual(task[self.task_dict['notes']], self.FULL_TASK_DATA['notes'])
-        self.assertEqual(task[self.task_dict['priority']], self.FULL_TASK_DATA['priority'])
+        self.assertEqual(task[self.FIELD_MAPPING['title']], self.FULL_TASK_DATA['title'])
+        self.assertEqual(task[self.FIELD_MAPPING['deadline']], deadline_str)
+        self.assertEqual(task[self.FIELD_MAPPING['category']], self.FULL_TASK_DATA['category'])
+        self.assertEqual(task[self.FIELD_MAPPING['notes']], self.FULL_TASK_DATA['notes'])
+        self.assertEqual(task[self.FIELD_MAPPING['priority']], self.FULL_TASK_DATA['priority'])
 
     def test_add_task_with_partial_fields(self):
         """Verify task creation with only some fields populated."""
