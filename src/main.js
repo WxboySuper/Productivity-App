@@ -7,14 +7,7 @@ const pythonPath = process.env.PYTHON_PATH || 'python'
 
 let serverProcess = null
 let bridgeProcess = null
-
-const pyshell = new PythonShell('app.py', {
-    mode: 'text',
-    // skipcq: JS-0240
-    pythonPath: pythonPath,
-    pythonOptions: ['-u'],
-    scriptPath: path.join(__dirname, '../src/python')  // Points to src/python directory
-});
+let pyshell = null
 
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
@@ -27,9 +20,14 @@ function startBackendProcesses() {
     const serverScript = path.join(baseDir, 'server.py')
     const bridgeScript = path.join(baseDir, 'todo_bridge.py')
 
-    serverProcess = spawn(pythonPath, [serverScript], {
-        env: { ...process.env, DB_PATH: dbPath }
-    })
+    try {  
+        serverProcess = spawn(pythonPath, [serverScript], {  
+            env: { ...process.env, DB_PATH: dbPath }  
+        })  
+     } catch (error) {  
+         log.error(`Failed to start server process: ${error}`)  
+         app.quit()  
+     }     
 
     bridgeProcess = spawn(pythonPath, [bridgeScript], {
         env: { ...process.env, DB_PATH: dbPath }
@@ -56,9 +54,16 @@ function startBackendProcesses() {
     }) 
 
     // skipcq: JS-0241
-    pyshell.on('error', function (err) {
-        // skipcq: JS-0002
-        console.log('Flask server error:', err);
+    pyshell = new PythonShell('app.py', {
+        mode: 'text',
+        // skipcq: JS-0240
+        pythonPath: pythonPath,
+        pythonOptions: ['-u'],
+        scriptPath: path.join(__dirname, '../src/python')  // Points to src/python directory
+    });
+
+    pyshell.on('error', err => {
+        log.error('Flask server error:', err);
     });
 }
 
