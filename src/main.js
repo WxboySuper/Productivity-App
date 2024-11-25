@@ -5,7 +5,16 @@ const log = require('electron-log')
 const { PythonShell } = require('python-shell');
 const pythonPath = process.env.PYTHON_PATH || 'python'
 
-let serverProcess, bridgeProcess, pyshell
+let serverProcess = null
+let bridgeProcess = null
+
+const pyshell = new PythonShell('app.py', {
+    mode: 'text',
+    // skipcq: JS-0240
+    pythonPath: pythonPath,
+    pythonOptions: ['-u'],
+    scriptPath: path.join(__dirname, '../src/python')  // Points to src/python directory
+});
 
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
@@ -45,15 +54,6 @@ function startBackendProcesses() {
     bridgeProcess.stderr.on('data', (data) => {  
         log.error(`Bridge Error: ${data}`)  
     }) 
-
-    // skipcq: JS-0125
-    const pyshell = new PythonShell('app.py', {
-        mode: 'text',
-        // skipcq: JS-0240
-        pythonPath: pythonPath,
-        pythonOptions: ['-u'],
-        scriptPath: path.join(__dirname, '../src/python')  // Points to src/python directory
-    });
 
     // skipcq: JS-0241
     pyshell.on('error', function (err) {
