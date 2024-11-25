@@ -29,9 +29,14 @@ function startBackendProcesses() {
          app.quit()  
      }     
 
-    bridgeProcess = spawn(pythonPath, [bridgeScript], {
-        env: { ...process.env, DB_PATH: dbPath }
-    })
+     try {  
+            bridgeProcess = spawn(pythonPath, [bridgeScript], {  
+                env: { ...process.env, DB_PATH: dbPath }  
+            })  
+        } catch (error) {  
+            log.error(`Failed to start bridge process: ${error}`)  
+            app.quit()  
+        }
 
     serverProcess.stdout.on('data', (data) => {
         const output = data.toString();  
@@ -59,7 +64,9 @@ function startBackendProcesses() {
         // skipcq: JS-0240
         pythonPath: pythonPath,
         pythonOptions: ['-u'],
-        scriptPath: path.join(__dirname, '../src/python')  // Points to src/python directory
+        scriptPath: app.isPackaged 
+            ? path.join(process.resourcesPath, 'src', 'python')  
+            : path.join(__dirname, '../src/python')
     });
 
     pyshell.on('error', err => {
