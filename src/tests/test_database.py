@@ -27,6 +27,13 @@ class TestTodoDatabase(unittest.TestCase):
         'priority': 2
     }
 
+    DELETE_TASK_DATA = {
+        'title': "Quarterly Report",
+        "category": "Word",
+        "notes": "Include Q3 Metrics",
+        "priority": 2
+    }
+
     # Database field mapping
     FIELD_MAPPING = {
         1: 'title',
@@ -45,6 +52,7 @@ class TestTodoDatabase(unittest.TestCase):
         self.db = TodoDatabase(self.TEST_DB_NAME)
         self.db.init_database()
     
+    # Test Suite for Add Task Functionality
     def test_add_task_basic(self):
         """Verify basic task creation with minimal required fields."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -111,3 +119,28 @@ class TestTodoDatabase(unittest.TestCase):
         """Verify that invalid priority values are rejected."""
         with self.assertRaises(sqlite3.IntegrityError):
             self.db.add_task(self.BASIC_TASK_TITLE, priority=self.INVALID_PRIORITY)
+
+    # Test Suite for Delete Task Functionality
+    def test_task_delete(self):
+        """Verify that a task can be deleted by its ID."""
+        deadline_var = datetime.now()
+        deadline_str = deadline_var.strftime('%Y-%m-%d %H:%M:%S')
+        
+        task_data = self.DELETE_TASK_DATA.copy()
+        task_data['deadline'] = deadline_str
+
+        task_id = self.db.add_task(
+            title=task_data['title'],
+            deadline=task_data['deadline'],
+            category=task_data['category'],
+            notes=task_data['notes'],
+            priority=task_data['priority']
+        )
+
+        task = self.db.get_task(task_id)
+        self.assertIsNotNone(task)
+
+        self.db.delete_task(task_id)
+
+        with self.assertRaises(ValueError):
+            self.db.get_task(task_id)
