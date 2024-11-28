@@ -248,7 +248,10 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id,))
-            return cursor.fetchone()
+            task = cursor.fetchone()
+            if task is None:
+                raise ValueError(f"Task with ID {task_id} not found")
+            return task
 
     def delete_label(self, label_id):
         """
