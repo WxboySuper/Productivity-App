@@ -248,6 +248,18 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id,))
+    """
+    Retrieves a task from the database by its ID.
+
+    Args:
+        task_id (int): The ID of the task to retrieve.
+
+    Returns:
+        tuple: A tuple containing the task's column values.
+
+    Raises:
+        ValueError: If the task with the specified ID is not found.
+    """
             task = cursor.fetchone()
             if task is None:
                 raise ValueError(f"Task with ID {task_id} not found")
