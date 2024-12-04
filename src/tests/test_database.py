@@ -27,9 +27,10 @@ class TestTodoDatabase(unittest.TestCase):
         'priority': 2
     }
 
+    # Task data for deletion test
     DELETE_TASK_DATA = {
         'title': "Quarterly Report",
-        "category": "Word",
+        "category": "Work",
         "notes": "Include Q3 Metrics",
         "priority": 2
     }
