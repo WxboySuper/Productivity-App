@@ -7,7 +7,7 @@ on:
       - unlabeled
 
 permissions:
-  pull-requests: read
+  pull-requests: write  # Updated to allow commenting
   contents: write
 
 jobs:
@@ -21,14 +21,15 @@ jobs:
     - name: Send message on label addition
       if: github.event.action == 'labeled' && github.event.label.name == 'halt-rabbit-review'
       run: |
-        touch message.txt
-        echo "@coderabbitai pause" >> message.txt || exit 1
-        cat message.txt
-
+        gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+        gh pr comment ${{ github.event.pull_request.number }} --body "@coderabbitai pause"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Send message on label removal
       if: github.event.action == 'unlabeled' && github.event.label.name == 'halt-rabbit-review'
       run: |
-        touch message.txt
-        echo "@coderabbitai resume" >> message.txt || exit 1
-        cat message.txt
+        gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+        gh pr comment ${{ github.event.pull_request.number }} --body "@coderabbitai resume"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
