@@ -1,0 +1,23 @@
+name: PR Label Trigger
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - unlabeled
+
+jobs:
+  label_actions:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    - name: Send message on label addition
+      if: github.event.action == 'labeled' && github.event.label.name == 'halt-rabbit-review'
+      run: echo "@coderabbitai pause" >> message.txt
+
+    - name: Send message on label removal
+      if: github.event.action == 'unlabeled' && github.event.label.name == 'halt-rabbit-review'
+      run: echo "@coderabbitai resume" >> message.txt
