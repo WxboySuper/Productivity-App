@@ -1,7 +1,7 @@
 import unittest
 import sqlite3
 from datetime import datetime
-from src.python.database import TodoDatabase
+from src.python.database import TodoDatabase, DatabaseError
 
 class TestTodoDatabase(unittest.TestCase):
     """Test suite for TodoDatabase class functionality."""
@@ -145,3 +145,8 @@ class TestTodoDatabase(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.db.get_task(task_id)
+
+    def test_delete_nonexistent_task(self):
+        """Verify that attempting to delete a non-existent task raises an error."""
+        with self.assertRaises(DatabaseError):
+            self.db.delete_task(9999)
