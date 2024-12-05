@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch, MagicMock
 import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
@@ -106,19 +107,20 @@ class TestTodoDatabase(unittest.TestCase):
         self.assertIsNone(task[2] or None)  # Convert SQLite NULL (0) to Python None
         self.assertEqual(task[3], self.PARTIAL_TASK_DATA['category'])
         self.assertIsNone(task[4] or None)  # Convert SQLite NULL (0) to Python None
+
     def test_add_task_empty_title(self):
         """Verify that empty task titles are rejected."""
-        with self.assertRaises(sqlite3.IntegrityError):
+        with self.assertRaises(DatabaseError):
             self.db.add_task("")
 
     def test_add_task_none_title(self):
         """Verify that None task titles are rejected."""
-        with self.assertRaises(sqlite3.IntegrityError):
+        with self.assertRaises(DatabaseError):
             self.db.add_task(None)
 
     def test_add_task_invalid_priority(self):
         """Verify that invalid priority values are rejected."""
-        with self.assertRaises(sqlite3.IntegrityError):
+        with self.assertRaises(DatabaseError):
             self.db.add_task(self.BASIC_TASK_TITLE, priority=self.INVALID_PRIORITY)
 
     # Test Suite for Delete Task Functionality
@@ -150,3 +152,11 @@ class TestTodoDatabase(unittest.TestCase):
         """Verify that attempting to delete a non-existent task raises an error."""
         with self.assertRaises(DatabaseError):
             self.db.delete_task(9999)
+    
+    @patch('sqlite3.connect')
+    def test_delete_task_db_connection_error(self, mock_connect):
+        """Verify that a database connection error is handled correctly."""
+        mock_connect.side_effect = sqlite3.OperationalError("Unable to connect to the database")
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.delete_task(1)
+        self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
