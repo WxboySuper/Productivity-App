@@ -52,7 +52,8 @@ class TestTodoDatabase(unittest.TestCase):
     def setUp(self):
         """Initialize test database before each test case."""
         self.db = TodoDatabase(self.TEST_DB_NAME)
-        self.db.init_database()
+        self.conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db.init_database(self.conn)
     
     # Test Suite for Add Task Functionality
     def test_add_task_basic(self):
