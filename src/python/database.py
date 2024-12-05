@@ -213,7 +213,6 @@ class TodoDatabase:
             return
 
         query = 'UPDATE tasks SET ? WHERE id = ?' 
-        # query = 'UPDATE tasks SET ' + ', '.join(f'{field} = :{field}' for field in validated_updates) + ' WHERE id = :task_id'
         values = {field: validated_updates[field] for field in validated_updates}
         values['task_id'] = task_id
 
