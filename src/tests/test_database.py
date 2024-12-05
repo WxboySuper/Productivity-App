@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
