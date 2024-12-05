@@ -1,6 +1,22 @@
 import sqlite3
 from datetime import datetime
 import os
+import logging as log
+
+log.basicConfig(
+    level=log.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    filename="logs/database.log",
+)
+
+
+class DatabaseError(Exception):
+    """Custom exception class for database errors."""
+    def __init__(self, message, code):
+        super().__init__(message)
+        self.code = code
+
 
 class TodoDatabase:
     """
@@ -216,10 +232,17 @@ class TodoDatabase:
         Returns:
             None
         """
-        query = 'DELETE FROM tasks WHERE id = ?'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
+        try:
+            query = 'DELETE FROM tasks WHERE id = ?'
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error deleting task: %s", e)
+            raise DatabaseError("An error occurred while deleting the task", "DB_QUERY_ERROR") from e
 
     def get_all_tasks(self):
         """
