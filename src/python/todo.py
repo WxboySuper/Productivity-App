@@ -1,4 +1,12 @@
 from src.python.database import TodoDatabase
+import logging as log
+
+log.basicConfig(
+    level=log.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    filename="logs/todo.log",
+)
 
 
 class TodoList:
@@ -49,7 +57,7 @@ class TodoList:
         """
         task_id = self.db.add_task(task, deadline, category, notes, priority)
         self.refresh_tasks()
-        print(f"Task '{task}' added successfully!")
+        log.info("Task '%s' added successfully!", task)
         return task_id
 
     def mark_completed(self, task_index):
@@ -66,9 +74,10 @@ class TodoList:
             task_id = self.tasks[task_index][0]
             self.db.mark_completed(task_id)
             self.refresh_tasks()
-            print("Task marked as completed!")
+            log.info("Task marked as completed!")
         else:
-            print("Invalid task index!")
+            log.error("Invalid task index!")
+            raise IndexError("Invalid task index!")
 
     def update_task(self, task_index, **updates):
         """
@@ -88,7 +97,8 @@ class TodoList:
             self.refresh_tasks()
             print("Task updated successfully!")
         else:
-            print("Invalid task index!")
+            log.error("Invalid task index!")
+            raise IndexError("Invalid task index!")
 
     def delete_task(self, task_index):
         """
@@ -107,4 +117,5 @@ class TodoList:
             self.refresh_tasks()
             print(f"Task '{task[1]}' deleted successfully!")
         else:
-            print("Invalid task index!")
+            log.error("Invalid task index!")
+            raise IndexError("Invalid task index!")
