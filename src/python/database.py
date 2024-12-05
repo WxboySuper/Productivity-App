@@ -216,7 +216,7 @@ class TodoDatabase:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 set_clause = ', '.join(f"{field} = ?" for field in validated_updates)
-                query = f'UPDATE tasks SET ? WHERE id = ?'
+                query = 'UPDATE tasks SET ? WHERE id = ?'
                 values = list(validated_updates.values())
                 values.append(task_id)
                 cursor.execute(query, set_clause, values)
