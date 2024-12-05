@@ -88,7 +88,7 @@ class TestTodoDatabase(unittest.TestCase):
         self.assertEqual(task[2], task_data['deadline'])  # deadline
         self.assertEqual(task[3], task_data['category'])  # category
         self.assertEqual(task[4], task_data['notes'])  # notes
-        self.assertEqual(task[5], task_data['priority'])  # priority
+        self.assertEqual(task[5], int(task_data['priority']))  # priority
 
     def test_add_task_with_partial_fields(self):
         """Verify task creation with only some fields populated."""
