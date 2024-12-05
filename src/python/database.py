@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import logging as log
-from logging import RotatingFileHandler
+from logging.handlers import RotatingFileHandler
 
 log_dir = os.getenv("LOG_DIR", "logs")
 os.makedirs(log_dir, exist_ok=True)
@@ -42,10 +42,11 @@ class TodoDatabase:
     def __init__(self, db_file="todo.db"):
         """
         Initializes a TodoDatabase instance with the specified database file path.
-
-          Raises:
-              sqlite3.OperationalError: If the database connection fails or if there are permission issues with the database file.
-          """
+        
+        Raises:
+            sqlite3.OperationalError: If database connection fails
+            PermissionError: If no write permission for database directory
+        """
         if db_file is None:
             db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
         db_dir = os.path.dirname(os.path.abspath(db_file))  
@@ -54,65 +55,50 @@ class TodoDatabase:
         if not os.access(db_dir, os.W_OK):  
             raise PermissionError(f"No write permission for database directory: {db_dir}")
         self.db_file = db_file
-        self.conn = sqlite3.connect(self.db_file)
-        self.init_database()
+        # Initialize database but don't keep connection open
+        with sqlite3.connect(self.db_file) as conn:
+            self.init_database(conn)
 
     def __del__(self):
-        """
-        Closes the database connection when the TodoDatabase instance is destroyed.
-
-        This method is called automatically when the TodoDatabase instance is garbage collected or explicitly deleted.
-        It ensures that the database connection is properly closed, even if an exception occurs during the closing process.
-        """
+        """Ensures database connection is closed when object is destroyed."""
         try:
-            self.conn.close()
-        except Exception:
-            pass
+            if hasattr(self, 'conn') and self.conn:
+                self.conn.close()
+        except Exception as e:
+            log.error("Error closing database connection: %s", e)
 
-    def init_database(self):
-        """
-        Initializes the database by creating the necessary tables if they don't already exist.
-
-        This method establishes a connection to the SQLite database file specified in the `self.db_file` attribute. It then creates three tables:
-
-        1. `tasks`: Stores the todo tasks with fields for title, completion status, deadline, category, notes, priority, and creation timestamp.
-        2. `labels`: Stores the labels that can be associated with tasks, with fields for name and color.
-        3. `task_labels`: A junction table that stores the many-to-many relationship between tasks and labels.
-
-        The method uses parameterized SQL queries to create the tables, which helps prevent SQL injection vulnerabilities.
-        If the tables already exist, the method simply skips their creation.
-        """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL,
-                    completed BOOLEAN DEFAULT FALSE,
-                    deadline DATETIME,
-                    category TEXT,
-                    notes TEXT,
-                    priority INTEGER,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS labels (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT UNIQUE NOT NULL,
-                    color TEXT
-                )
-            ''')
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS task_labels (
-                    task_id INTEGER,
-                    label_id INTEGER,
-                    FOREIGN KEY (task_id) REFERENCES tasks (id),
-                    FOREIGN KEY (label_id) REFERENCES labels (id),
-                    PRIMARY KEY (task_id, label_id)
-                )
-            ''')
-            conn.commit()
+    def init_database(self, conn):
+        """Initialize database tables if they don't exist."""
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                completed BOOLEAN DEFAULT FALSE,
+                deadline DATETIME,
+                category TEXT,
+                notes TEXT,
+                priority INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS labels (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                color TEXT
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS task_labels (
+                task_id INTEGER,
+                label_id INTEGER,
+                FOREIGN KEY (task_id) REFERENCES tasks (id),
+                FOREIGN KEY (label_id) REFERENCES labels (id),
+                PRIMARY KEY (task_id, label_id)
+            )
+        ''')
+        cursor.close()
 
     @staticmethod
     def _validate_priority(priority):
