@@ -192,6 +192,30 @@ class TodoDatabase:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
+    def _validate_updates(self, updates):
+        """Validates and filters update fields."""
+        ALLOWED_UPDATES = {
+            'title': str,
+            'completed': bool,
+            'deadline': str,
+            'category': str,
+            'notes': str,
+            'priority': str
+        }
+
+        validated_updates = {}
+        for field, value in updates.items():
+            if field not in ALLOWED_UPDATES:
+                continue
+
+            if not isinstance(value, ALLOWED_UPDATES[field]):
+                continue
+
+            if field == 'priority':
+                self._validate_priority(value)
+
+            validated_updates[field] = value
+
     def update_task(self, task_id, **updates):
         """
         Updates a task in the database with the provided field updates.
@@ -204,29 +228,8 @@ class TodoDatabase:
         Raises:
             DatabaseError: If there is an error updating the task.
         """
-        ALLOWED_UPDATES = {
-            'title': str,
-            'completed': bool,
-            'deadline': str,
-            'category': str,
-            'notes': str,
-            'priority': str
-        }
 
-        VALID_PRIORITIES = {'ASAP', '1', '2', '3', '4'}
-
-        validated_updates = {}
-        for field, value in updates.items():
-            if field not in ALLOWED_UPDATES:
-                continue
-
-            if not isinstance(value, ALLOWED_UPDATES[field]):
-                continue
-
-            if field == 'priority' and value not in VALID_PRIORITIES:
-                continue
-
-            validated_updates[field] = value
+        validated_updates = self._validate_updates(updates)
 
         if not validated_updates:
             return
