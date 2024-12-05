@@ -114,6 +114,19 @@ class TodoDatabase:
             ''')
             conn.commit()
 
+    def _validate_priority(self, priority):
+        """Validates the priority value."""
+        VALID_PRIORITIES = ['ASAP', '1', '2', '3', '4']
+        if priority is not None and priority not in VALID_PRIORITIES:
+            raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
+
+    def _validate_title(self, title):
+        """Validates the task title."""
+        if title is None:
+            raise DatabaseError("Title cannot be empty", "INVALID_TITLE")
+        elif title.strip() == "":
+            raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
+
     def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
         """
         Adds a new task to the database.
@@ -136,15 +149,9 @@ class TodoDatabase:
                 - DB_CONN_ERROR: If there is a database connection error.
                 - DB_QUERY_ERROR: If there is an error execuring the query.
         """
-        VALID_PRIORITIES = {'ASAP', '1', '2', '3', '4'}
-        
-        if priority is not None and priority not in VALID_PRIORITIES:
-            raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
 
-        if title is None:
-            raise DatabaseError("Title cannot be empty", "INVALID_TITLE")
-        elif title.strip() == "":
-            raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
+        self._validate_priority(priority)
+        self._validate_title(title)
 
         query = '''
             INSERT INTO tasks (title, deadline, category, notes, priority)
