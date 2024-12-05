@@ -215,6 +215,8 @@ class TodoDatabase:
                 self._validate_priority(value)
 
             validated_updates[field] = value
+        
+        return validated_updates
 
     def update_task(self, task_id, **updates):
         """
