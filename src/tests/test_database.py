@@ -18,14 +18,14 @@ class TestTodoDatabase(unittest.TestCase):
         'title': "Complete Project",
         'category': "Work",
         'notes': "Important project deadline",
-        'priority': 1
+        'priority': "1"
     }
     
     # Partial task data
     PARTIAL_TASK_DATA = {
         'title': "Partial Task",
         'category': "Personal",
-        'priority': 2
+        'priority': "2"
     }
 
     # Task data for deletion test
@@ -33,7 +33,7 @@ class TestTodoDatabase(unittest.TestCase):
         'title': "Quarterly Report",
         "category": "Work",
         "notes": "Include Q3 Metrics",
-        "priority": 2
+        "priority": "2"
     }
 
     # Database field mapping
