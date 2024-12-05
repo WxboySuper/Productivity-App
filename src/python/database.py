@@ -128,7 +128,9 @@ class TodoDatabase:
         if priority is not None and priority not in VALID_PRIORITIES:
             raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
 
-        if title is None or title.strip() == "":
+        if title is None:
+            raise DatabaseError("Title cannot be empty", "INVALID_TITLE")
+        elif title.strip() == "":
             raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
 
         query = '''

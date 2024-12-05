@@ -110,18 +110,21 @@ class TestTodoDatabase(unittest.TestCase):
 
     def test_add_task_empty_title(self):
         """Verify that empty task titles are rejected."""
-        with self.assertRaises(DatabaseError):
+        with self.assertRaises(DatabaseError) as cm:
             self.db.add_task("")
+        self.assertEqual(cm.exception.code, "EMPTY_TITLE")
 
     def test_add_task_none_title(self):
         """Verify that None task titles are rejected."""
-        with self.assertRaises(DatabaseError):
+        with self.assertRaises(DatabaseError) as cm:
             self.db.add_task(None)
+        self.assertEqual(cm.exception.code, "INVALID_TITLE")
 
     def test_add_task_invalid_priority(self):
         """Verify that invalid priority values are rejected."""
-        with self.assertRaises(DatabaseError):
+        with self.assertRaises(DatabaseError) as cm:
             self.db.add_task(self.BASIC_TASK_TITLE, priority=self.INVALID_PRIORITY)
+        self.assertEqual(cm.exception.code, "INVALID_PRIORITY")
 
     # Test Suite for Delete Task Functionality
     def test_task_delete(self):
