@@ -215,10 +215,9 @@ class TodoDatabase:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 set_clause = ', '.join(f"{field} = ?" for field in validated_updates)
-                query = 'UPDATE tasks SET ? WHERE id = ?'
-                values = list(validated_updates.values())
-                values.append(task_id)
-                cursor.execute(query, set_clause, values)
+                query = f'UPDATE tasks SET {set_clause} WHERE id = ?'
+                values = list(validated_updates.values()) + [task_id]
+                cursor.execute(query, values)
                 if cursor.rowcount == 0:
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
                 conn.commit()
