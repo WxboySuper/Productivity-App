@@ -234,6 +234,27 @@ class TodoDatabase:
             log.error("Error updating task: %s", e)
             raise DatabaseError("An error occurred while updating the task", "DB_QUERY_ERROR") from e
 
+    def mark_completed(self, task_id):
+        """
+        Marks the task with the specified ID as completed in the database.
+
+        Args:
+            task_id (int): The ID of the task to mark as completed.
+
+        Raises:
+            DatabaseError: If task not found or database error codes.
+        """
+        query = 'UPDATE tasks SET completed = TRUE WHERE id = ?'
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+
     def get_task_labels(self, task_id):
         """
         Retrieves all labels associated with the specified task.
@@ -253,21 +274,6 @@ class TodoDatabase:
                 WHERE tl.task_id = ?
             ''', (task_id,))
             return cursor.fetchall()
-
-    def mark_completed(self, task_id):
-        """
-        Marks the task with the specified ID as completed in the database.
-
-        Args:
-            task_id (int): The ID of the task to mark as completed.
-
-        Returns:
-            None
-        """
-        query = 'UPDATE tasks SET completed = TRUE WHERE id = ?'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
 
     def get_all_tasks(self):
         """
