@@ -1,6 +1,9 @@
 from src.python.database import TodoDatabase
 import logging as log
 
+if not os.path.exists("/logs"):
+    os.mdkir("logs")
+
 log.basicConfig(
     level=log.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
