@@ -67,7 +67,8 @@ class TodoDatabase:
         except Exception as e:
             log.error("Error closing database connection: %s", e)
 
-    def init_database(self, conn):
+    @staticmethod
+    def init_database(conn):
         """Initialize database tables if they don't exist."""
         cursor = conn.cursor()
         cursor.execute("""
