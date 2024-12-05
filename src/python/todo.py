@@ -1,5 +1,6 @@
 from src.python.database import TodoDatabase
 import logging as log
+import os
 
 if not os.path.exists("/logs"):
     os.mkdir("logs")
