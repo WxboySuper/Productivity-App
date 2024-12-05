@@ -212,14 +212,16 @@ class TodoDatabase:
         if not validated_updates:
             return
 
-        query = 'UPDATE tasks SET ' + ', '.join(f'{field} = :{field}' for field in validated_updates) + ' WHERE id = :task_id'
+        query = 'UPDATE tasks SET ? WHERE id = ?' 
+        # query = 'UPDATE tasks SET ' + ', '.join(f'{field} = :{field}' for field in validated_updates) + ' WHERE id = :task_id'
         values = {field: validated_updates[field] for field in validated_updates}
         values['task_id'] = task_id
 
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
-                cursor.execute(query, values)
+                value = (f'{field} = :{field}' for field in validated_updates)
+                cursor.execute(query, (', '.join(value), task_id,))
                 if cursor.rowcount == 0:
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
                 conn.commit()
