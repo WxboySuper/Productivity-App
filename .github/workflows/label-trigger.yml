@@ -6,6 +6,10 @@ on:
       - labeled
       - unlabeled
 
+permissions:
+  pull-requests: read
+  contents: write
+
 jobs:
   label_actions:
     runs-on: ubuntu-latest
