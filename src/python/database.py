@@ -122,6 +122,14 @@ class TodoDatabase:
         Raises:
             DatabaseError: If there is an error adding the task.
         """
+        VALID_PRIORITIES = {'ASAP', '1', '2', '3', '4'}
+        
+        if priority is not None and priority not in VALID_PRIORITIES:
+            raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
+
+        if title is None or title.strip() == "":
+            raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
+
         query = '''
             INSERT INTO tasks (title, deadline, category, notes, priority)
             VALUES (?, ?, ?, ?, ?)
@@ -160,9 +168,6 @@ class TodoDatabase:
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
-        except sqlite3.Error as e:
-            log.error("Error deleting task: %s", e)
-            raise DatabaseError("An error occurred while deleting the task", "DB_QUERY_ERROR") from e
 
     def update_task(self, task_id, **updates):
         """
