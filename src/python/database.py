@@ -121,7 +121,12 @@ class TodoDatabase:
             int: The ID of the newly created task.
 
         Raises:
-            DatabaseError: If there is an error adding the task.
+            DatabaseError: If there is an error adding the task. Possible error codes:
+                - INVALID_PRIORITY: If the priority value is not in a valid set
+                - INVALID_TITLE: If the title is None.
+                - EMPTY_TITLE: If the title is empty or whitespace.
+                - DB_CONN_ERROR: If there is a database connection error.
+                - DB_QUERY_ERROR: If there is an error execuring the query.
         """
         VALID_PRIORITIES = {'ASAP', '1', '2', '3', '4'}
         
