@@ -7,8 +7,7 @@ on:
       - unlabeled
 
 permissions:
-  pull-requests: read
-  contents: write
+  pull-requests: write
 
 jobs:
   label_actions:
@@ -21,14 +20,19 @@ jobs:
     - name: Send message on label addition
       if: github.event.action == 'labeled' && github.event.label.name == 'halt-rabbit-review'
       run: |
-        touch message.txt
-        echo "@coderabbitai pause" >> message.txt || exit 1
-        cat message.txt
-
+        if ! gh pr comment ${{ github.event.pull_request.number }} --body "@coderabbitai pause"; then
+          echo "Failed to comment on PR"
+          exit 1
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Send message on label removal
       if: github.event.action == 'unlabeled' && github.event.label.name == 'halt-rabbit-review'
       run: |
-        touch message.txt
-        echo "@coderabbitai resume" >> message.txt || exit 1
-        cat message.txt
+        if ! gh pr comment ${{ github.event.pull_request.number }} --body "@coderabbitai resume"; then
+          echo "Failed to comment on PR"
+          exit 1
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
