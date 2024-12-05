@@ -114,13 +114,15 @@ class TodoDatabase:
             ''')
             conn.commit()
 
-    def _validate_priority(self, priority):
+    @staticmethod
+    def _validate_priority(priority):
         """Validates the priority value."""
         VALID_PRIORITIES = ['ASAP', '1', '2', '3', '4']
         if priority is not None and priority not in VALID_PRIORITIES:
             raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
 
-    def _validate_title(self, title):
+    @staticmethod
+    def _validate_title(title):
         """Validates the task title."""
         if title is None:
             raise DatabaseError("Title cannot be empty", "INVALID_TITLE")
