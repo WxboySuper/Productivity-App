@@ -7,7 +7,7 @@ on:
       - unlabeled
 
 permissions:
-  pull-requests: write  # Updated to allow commenting
+  pull-requests: write
   contents: write
 
 jobs:
