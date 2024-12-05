@@ -1,14 +1,22 @@
 import sqlite3
 import os
 import logging as log
+from logging import RotatingFileHandler
 
-os.makedirs("logs", exist_ok=True)
+log_dir = os.getenv("LOG_DIR", "logs")
+os.makedirs(log_dir, exist_ok=True)
+
+handler = RotatingFileHandler(
+    os.path.join(log_dir, 'database.log'),
+    maxBytes=1024*1024, # 1 MB
+    backupCount = 5
+)
 
 log.basicConfig(
     level=log.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    filename="logs/database.log",
+    handlers=[handler]
 )
 
 
