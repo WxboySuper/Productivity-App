@@ -104,16 +104,69 @@ class TodoDatabase:
                 )
             ''')
             conn.commit()
+
+    def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
+        """
+        Adds a new task to the database.
+
+        Args:
+            title (str): The title of the task.
+            deadline (str, optional): The deadline of the task.
+            category (str, optional): The category of the task.
+            notes (str, optional): Additional notes for the task.
+            priority (str, optional): The priority of the task.
+
+        Returns:
+            int: The ID of the newly created task.
+
+        Raises:
+            DatabaseError: If there is an error adding the task.
+        """
+        query = '''
+            INSERT INTO tasks (title, deadline, category, notes, priority)
+            VALUES (?, ?, ?, ?, ?)
+        '''
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (title, deadline, category, notes, priority))
+                conn.commit()
+                return cursor.lastrowid
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error adding task: %s", e)
+            raise DatabaseError("An error occurred while adding the task", "DB_QUERY_ERROR") from e
+
+    def delete_task(self, task_id):
+        """
+        Deletes the task with the specified ID from the database.
+
+        Args:
+            task_id (int): The ID of the task to delete.
+
+        Raises:
+            DatabaseError: If there is an error deleting the task or if the task does not exist.
+        """
+        query = 'DELETE FROM tasks WHERE id = ?'
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+                conn.commit()
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error deleting task: %s", e)
+            raise DatabaseError("An error occurred while deleting the task", "DB_QUERY_ERROR") from e
+
     def update_task(self, task_id, **updates):
         """
         Updates a task in the database with the provided field updates.
-
-        This method takes a task ID and a dictionary of field updates.
-        It validates the updates against a whitelist of allowed fields and their expected types.
-        It also performs additional validation on the `priority` field to ensure it is one of the allowed values.
-
-        The method constructs a parameterized SQL query to update the task with the validated updates,
-        and executes the query using a database connection.
 
         Args:
             task_id (int): The ID of the task to update.
@@ -121,9 +174,8 @@ class TodoDatabase:
                               Allowed fields are `title`, `completed`, `deadline`, `category`, `notes`, and `priority`.
 
         Raises:
-            None
+            DatabaseError: If there is an error updating the task.
         """
-        # Define strict whitelist of allowed fields and their types
         ALLOWED_UPDATES = {
             'title': str,
             'completed': bool,
@@ -133,20 +185,16 @@ class TodoDatabase:
             'priority': str
         }
 
-        # Validate priority values against allowed options
         VALID_PRIORITIES = {'ASAP', '1', '2', '3', '4'}
 
-        # Filter and validate updates
         validated_updates = {}
         for field, value in updates.items():
             if field not in ALLOWED_UPDATES:
                 continue
 
-            # Type validation
             if not isinstance(value, ALLOWED_UPDATES[field]):
                 continue
 
-            # Additional validation for priority field
             if field == 'priority' and value not in VALID_PRIORITIES:
                 continue
 
@@ -155,16 +203,23 @@ class TodoDatabase:
         if not validated_updates:
             return
 
-        # Use static query structure with parameterized values
-        # skipcq: BAN-B608
-        query = '''UPDATE tasks SET ''' + ', '.join(f'{field} = ?' for field in ALLOWED_UPDATES if field in validated_updates) + ''' WHERE id = ?'''
+        query = 'UPDATE tasks SET ' + ', '.join(f'{field} = :{field}' for field in validated_updates) + ' WHERE id = :task_id'
+        values = {field: validated_updates[field] for field in validated_updates}
+        values['task_id'] = task_id
 
-        # Create values tuple with only the values, in the same order as the query
-        values = tuple(validated_updates[field] for field in ALLOWED_UPDATES if field in validated_updates) + (task_id,)
-
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, values)
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, values)
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+                conn.commit()
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error updating task: %s", e)
+            raise DatabaseError("An error occurred while updating the task", "DB_QUERY_ERROR") from e
 
     def get_task_labels(self, task_id):
         """
@@ -186,27 +241,6 @@ class TodoDatabase:
             ''', (task_id,))
             return cursor.fetchall()
 
-    def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
-        """
-        Adds a new task to the database.
-        """
-        if not title or len(title.strip()) == 0:
-            raise sqlite3.IntegrityError("Title cannot be empty")
-        
-        if priority is not None and (not isinstance(priority, (int, str)) or int(priority) < 0):
-            raise sqlite3.IntegrityError("Priority must be a non-negative integer")
-        
-        with sqlite3.connect(self.db_file) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            
-            # Store deadline as string in SQLite
-            if isinstance(deadline, datetime):
-                deadline = deadline.strftime('%Y-%m-%d %H:%M:%S')
-            
-            query = "INSERT INTO tasks (title, deadline, category, notes, priority) VALUES (?, ?, ?, ?, ?)"
-            cursor.execute(query, (title, deadline, category, notes, priority))
-            return cursor.lastrowid
     def mark_completed(self, task_id):
         """
         Marks the task with the specified ID as completed in the database.
@@ -221,28 +255,6 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id,))
-
-    def delete_task(self, task_id):
-        """
-        Deletes the task with the specified ID from the database.
-
-        Args:
-            task_id (int): The ID of the task to delete.
-
-        Returns:
-            None
-        """
-        try:
-            query = 'DELETE FROM tasks WHERE id = ?'
-            with sqlite3.connect(self.db_file) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, (task_id,))
-        except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
-            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
-        except sqlite3.Error as e:
-            log.error("Error deleting task: %s", e)
-            raise DatabaseError("An error occurred while deleting the task", "DB_QUERY_ERROR") from e
 
     def get_all_tasks(self):
         """
@@ -344,4 +356,3 @@ class TodoDatabase:
         cursor = self.conn.cursor()
         cursor.execute(query, (name,))
         return cursor.fetchone()[0]
-
