@@ -2,7 +2,7 @@ import sqlite3
 import os
 import logging as log
 
-os.mkdir("logs", exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 log.basicConfig(
     level=log.INFO,

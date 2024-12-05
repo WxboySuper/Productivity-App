@@ -2,8 +2,7 @@ from src.python.database import TodoDatabase
 import logging as log
 import os
 
-os.mkdir("logs", exist_ok=True)
-
+os.makedirs("logs", exist_ok=True)
 
 log.basicConfig(
     level=log.INFO,
