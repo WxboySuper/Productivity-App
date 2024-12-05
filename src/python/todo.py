@@ -2,10 +2,8 @@ from src.python.database import TodoDatabase
 import logging as log
 import os
 
-if not os.path.exists("logs"):
-    os.mkdir("logs")
-else:
-    pass
+os.mkdir("logs", exist_ok=True)
+
 
 log.basicConfig(
     level=log.INFO,
