@@ -2,7 +2,7 @@ from src.python.database import TodoDatabase
 import logging as log
 
 if not os.path.exists("/logs"):
-    os.mdkir("logs")
+    os.mkdir("logs")
 
 log.basicConfig(
     level=log.INFO,
