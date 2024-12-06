@@ -319,7 +319,7 @@ class TodoDatabase:
     
             task = cursor.fetchone()
             if task is None:
-                raise ValueError(f"Task with ID {task_id} not found")
+                raise DatabaseError(f"Task with ID {task_id} not found")
             return task
 
     def delete_label(self, label_id):
