@@ -5,8 +5,8 @@ from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
 import os
 import time
-from contextlib import suppress
 
+#skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
     """Base test class for TodoDatabase class."""
     
@@ -68,7 +68,9 @@ class BaseTodoDatabaseTest(unittest.TestCase):
                         time.sleep(0.5)
             try:
                 os.rmdir(cls.TEST_DB_DIR)
-            except (PermissionError, OSError):
+            except PermissionError:
+                pass
+            except OSError:
                 pass
 
     def setUp(self):
