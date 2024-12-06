@@ -21,7 +21,28 @@ log.basicConfig(
 
 
 class DatabaseError(Exception):
-    """Custom exception class for database errors."""
+    """Custom exception class for database-related errors.
+    
+    This exception is raised when database operations fail. Each error is
+    associated with a specific error code for better error handling.
+    
+    Error codes:
+    - TASK_NOT_FOUND: When the requested task doesn't exist
+    - INVALID_TITLE: When the task title is None
+    - EMPTY_TITLE: When the task title is empty or whitespace
+    - INVALID_PRIORITY: When the priority value is not in the valid set
+    - DB_CONN_ERROR: When database connection fails
+    - DB_QUERY_ERROR: When query execution fails
+    - NO_UPDATES: When no valid updates are provided
+    - INVALID_VALUE: When a field value has an invalid type
+    
+    Example:
+        try:
+            db.add_task("")
+        except DatabaseError as e:
+            if e.code == "EMPTY_TITLE":
+                print("Task title cannot be empty")
+    """
     def __init__(self, message, code):
         super().__init__(message)
         self.code = code
@@ -60,7 +81,11 @@ class TodoDatabase:
             self.init_database(conn)
 
     def __del__(self):
-        """Ensures database connection is closed when object is destroyed."""
+        """Ensures database connection is closed when object is destroyed.
+        
+        Any errors during connection closure are logged but not raised,
+        as this method is called during garbage collection.
+        """
         try:
             if hasattr(self, 'conn') and self.conn:
                 self.conn.close()
@@ -104,9 +129,16 @@ class TodoDatabase:
     @staticmethod
     def _validate_priority(priority):
         """Validates the priority value."""
-        VALID_PRIORITIES = ['ASAP', '1', '2', '3', '4']
+        VALID_PRIORITIES = {
+            'ASAP': 0,  # Highest priority
+            '1': 1,
+            '2': 2,
+            '3': 3,
+            '4': 4
+        }
         if priority is not None and priority not in VALID_PRIORITIES:
             raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
+        return VALID_PRIORITIES[priority] if priority else None
 
     @staticmethod
     def _validate_title(title):
