@@ -151,6 +151,7 @@ class TodoDatabase:
                 cursor = conn.cursor()
                 cursor.execute(query, (title, deadline, category, notes, priority))
                 conn.commit()
+                log.info("Task created successfully with ID %d", cursor.lastrowid)
                 return cursor.lastrowid
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
