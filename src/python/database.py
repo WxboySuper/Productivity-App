@@ -292,7 +292,10 @@ class TodoDatabase:
                 task = cursor.fetchone()
                 if task is None:
                     raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
-                return task
+                
+                task_list = list(task)
+                task_list[2] = bool(task_list[2])
+                return tuple(task_list)
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e

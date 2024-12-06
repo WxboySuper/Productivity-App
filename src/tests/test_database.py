@@ -197,7 +197,7 @@ class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
         deadline_var = datetime.now()
         deadline_str = deadline_var.strftime('%Y-%m-%d %H:%M:%S')
         
-        task_data = self.DELETE_TASK_DATA.copy()
+        task_data = self.FULL_TASK_DATA.copy()
         task_data['deadline'] = deadline_str
 
         task_id = self.db.add_task(
@@ -263,11 +263,18 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
         self.db.update_task(task_id, **updates)
 
         task = self.db.get_task(task_id)
+        # Verify each field with type-specific assertions
+        self.assertIsInstance(task[1], str, "Title should be a string")
         self.assertEqual(task[1], updates['title'])
-        self.assertEqual(task[2], True)
+        self.assertIsInstance(task[2], bool, "Completed should be a boolean")
+        self.assertTrue(task[2])
+        self.assertIsInstance(task[3], str, "Deadline should be a string")
         self.assertEqual(task[3], updates['deadline'])
+        self.assertIsInstance(task[4], str, "Category should be a string")
         self.assertEqual(task[4], updates['category'])
+        self.assertIsInstance(task[5], str, "Notes should be a string")
         self.assertEqual(task[5], updates['notes'])
+        self.assertIsInstance(task[6], int, "Priority should be an integer")
         self.assertEqual(task[6], int(updates['priority']))
     
     def test_update_nonexistent_task(self):
@@ -446,6 +453,4 @@ class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_all_tasks()
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
-
-
 
