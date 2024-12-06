@@ -158,8 +158,9 @@ class TestTodoDatabase(unittest.TestCase):
 
         self.db.delete_task(task_id)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DatabaseError) as cm:
             self.db.get_task(task_id)
+        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
 
     def test_delete_nonexistent_task(self):
         """Verify that attempting to delete a non-existent task raises an error."""
@@ -218,11 +219,11 @@ class TestTodoDatabase(unittest.TestCase):
         """Verify that updating a task with an invalid field does not change the task."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
         updates = {'invalid_field': "Invalid Value"}
-        self.db.update_task(task_id, **updates)
         
-        task = self.db.get_task(task_id)
-        self.assertEqual(task[1], self.BASIC_TASK_TITLE)
-    
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(task_id, **updates)
+        self.assertEqual(cm.exception.code, "NO_UPDATES")
+
     def test_update_task_invalid_priority(self):
         """Verify that updating a task with an invalid priority raises a DatabaseError."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)

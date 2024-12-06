@@ -227,6 +227,9 @@ class TodoDatabase:
 
         validated_updates = self._validate_updates(updates)
 
+        if not validated_updates:
+            raise DatabaseError("No valid updates provided", "NO_UPDATES")
+
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -319,7 +322,7 @@ class TodoDatabase:
     
             task = cursor.fetchone()
             if task is None:
-                raise DatabaseError(f"Task with ID {task_id} not found")
+                raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
             return task
 
     def delete_label(self, label_id):
