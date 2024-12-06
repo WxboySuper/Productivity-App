@@ -392,9 +392,7 @@ class TestTodoDatabaseGetAllTasks(unittest.TestCase):
     def test_get_all_tasks_successful(self):
         """Verify that all tasks can be successfully retrieved."""
         self.db.add_task(self.BASIC_TASK_TITLE)
-        time.sleep(0.1)  # Ensure first task is committed
         self.db.add_task(self.BASIC_TASK_TITLE)
-        time.sleep(0.1)  # Ensure second task is committed
         
         tasks = self.db.get_all_tasks()
         self.assertEqual(len(tasks), 2)
