@@ -222,10 +222,10 @@ class TodoDatabase:
             DatabaseError: If there is an error updating the task.
         """
 
-        validated_updates = self._validate_updates(updates)
+        if not updates:
+            raise DatabaseError("No updates provided", "NO_UPDATES")
 
-        if not validated_updates:
-            return
+        validated_updates = self._validate_updates(updates)
 
         try:
             with sqlite3.connect(self.db_file) as conn:

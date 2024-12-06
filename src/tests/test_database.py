@@ -246,7 +246,16 @@ class TestTodoDatabase(unittest.TestCase):
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(task_id, **updates)
         self.assertEqual(cm.exception.code, "INVALID_VALUE")
-    
+
+    def test_empty_update(self):
+        """Verify that updating a task with an empty dictionary does not change the task."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        updates = {}
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(task_id, **updates)
+        self.assertEqual(cm.exception.code, "NO_UPDATES")
+        
+
     @patch('sqlite3.connect')
     def test_update_task_db_connection_error(self, mock_connect):
         """Verify that a database connection error during update is handled correctly."""
