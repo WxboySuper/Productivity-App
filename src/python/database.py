@@ -305,10 +305,14 @@ class TodoDatabase:
             list: A list of tuples, where each tuple represents a task and contains the task's column values.
         """
         query = 'SELECT * FROM tasks ORDER BY created_at DESC'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query)
-            return cursor.fetchall()
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query)
+                return cursor.fetchall()
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def add_label(self, name, color=None):
         query = """

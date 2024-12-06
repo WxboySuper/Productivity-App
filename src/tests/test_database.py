@@ -3,6 +3,7 @@ from unittest.mock import patch
 import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
+import os
 
 class TestTodoDatabase(unittest.TestCase):
     """Test suite for TodoDatabase class functionality."""
@@ -60,9 +61,31 @@ class TestTodoDatabase(unittest.TestCase):
 
     def setUp(self):
         """Initialize test database before each test case."""
+        # Remove existing test database if it exists
+        if os.path.exists(self.TEST_DB_NAME):
+            try:
+                os.remove(self.TEST_DB_NAME)
+            except PermissionError:
+                pass  # File might be locked, will be cleaned up in next test
+        
         self.db = TodoDatabase(self.TEST_DB_NAME)
         self.conn = sqlite3.connect(self.TEST_DB_NAME)
         self.db.init_database(self.conn)
+
+    def tearDown(self):
+        """Clean up test database after each test case."""
+        try:
+            if self.conn:
+                self.conn.close()
+            if hasattr(self, 'db'):
+                del self.db
+            # Add a small delay to ensure connections are fully closed
+            import time
+            time.sleep(0.1)
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+        except PermissionError:
+            pass  # If file is still locked, it will be cleaned up in next test
     
     # Test Suite for add_task Functionality
     def test_add_task_basic(self):
@@ -316,3 +339,19 @@ class TestTodoDatabase(unittest.TestCase):
         mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_task(1)
+    
+    # Test Suite for get_all_tasks Functionality
+    def test_get_all_tasks_successful(self):
+        """Verify that all tasks can be successfully retrieved."""
+        self.db.add_task(self.BASIC_TASK_TITLE)
+        self.db.add_task(self.BASIC_TASK_TITLE)
+        tasks = self.db.get_all_tasks()
+        self.assertEqual(len(tasks), 2)
+    
+    @patch('sqlite3.connect')
+    def test_get_all_tasks_db_connection_error(self, mock_connect):
+        """Verify that a database connection error is handled correctly."""
+        mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.get_all_tasks()
+        self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
