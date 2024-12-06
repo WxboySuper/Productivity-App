@@ -541,26 +541,27 @@ class TestTodoDatabaseGetAllTasks(unittest.TestCase):
                     pass
 
     def setUp(self):
-        """Create fresh database before each test."""
-        time.sleep(0.5)  # Wait for previous test cleanup
-        self.db = TodoDatabase(self.TEST_DB_NAME)
-        time.sleep(0.2)  # Ensure database is ready
-
-    def tearDown(self):
-        """Clean up after each test."""
-        try:
-            if hasattr(self, 'db'):
-                del self.db
-            time.sleep(0.5)  # Increased delay for Windows
+        """Initialize test database before each test case."""
+        # Remove existing test database if it exists
+        with suppress(PermissionError):
             if os.path.exists(self.TEST_DB_NAME):
                 os.remove(self.TEST_DB_NAME)
-        except (PermissionError, sqlite3.Error):
-            time.sleep(1.0)  # Increased delay for Windows
-            try:
-                if os.path.exists(self.TEST_DB_NAME):
-                    os.remove(self.TEST_DB_NAME)
-            except (PermissionError, sqlite3.Error):
-                pass  # Will be cleaned up in next test
+        
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        self.conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db.init_database(self.conn)
+
+    def tearDown(self):
+        """Clean up test database after each test case."""
+        with suppress(PermissionError):
+            if self.conn:
+                self.conn.close()
+            if hasattr(self, 'db'):
+                del self.db
+            # Add a small delay to ensure connections are fully closed
+            time.sleep(0.1)
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
 
     def test_get_all_tasks_successful(self):
         """Verify that all tasks can be successfully retrieved."""
