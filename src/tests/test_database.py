@@ -256,6 +256,15 @@ class TestTodoDatabase(unittest.TestCase):
             self.db.update_task(task_id, **updates)
         self.assertEqual(cm.exception.code, "NO_UPDATES")
         
+    def test_update_task_empty_optional_fields(self):
+        """Verify that empty strings are handled correctly for optional fields."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        updates = {'notes': "", 'category': ""}
+        self.db.update_task(task_id, **updates)
+        task = self.db.get_task(task_id)
+        self.assertEqual(task[4], "")
+        self.assertEqual(task[5], "")
+
 
     @patch('sqlite3.connect')
     def test_update_task_db_connection_error(self, mock_connect):
