@@ -19,7 +19,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         'completed': False,
         'category': "Work",
         'notes': "Important project deadline",
-        'priority': 1
+        'priority': "1"
     }
     
     # Partial task data
@@ -46,7 +46,6 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     TEST_DB_DIR = os.path.join(os.path.dirname(__file__), 'test_databases')
     TEST_DB_NAME = os.path.join(TEST_DB_DIR, 'test_todo.db')
 
-    @staticmethod
     def wait_for_file_operation(self, condition_func, timeout=5, initial_delay=0.1):
         """Wait for file operation with exponential backoff."""
         delay = initial_delay
