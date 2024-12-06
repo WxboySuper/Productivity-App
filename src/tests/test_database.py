@@ -254,3 +254,25 @@ class TestTodoDatabase(unittest.TestCase):
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(1, title="New Title")
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+    
+    # Test Suite for mark_completed Functionality
+    def test_mark_completed_successful(self):
+        """Verify that a task can be successfully marked as completed."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        self.db.mark_completed(task_id)
+        task = self.db.get_task(task_id)
+        self.assertTrue(task[2])
+    
+    def test_mark_completed_nonexistent_task(self):
+        """Verify that marking a nonexistent task as completed raises DatabaseError."""
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.mark_completed(9999)
+        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
+    
+    @patch('sqlite3.connect')
+    def test_mark_completed_db_connection_error(self, mock_connect):
+        """Verify that a database connection error is handled correctly."""
+        mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.mark_completed(1)
+        self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
