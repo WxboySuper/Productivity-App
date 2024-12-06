@@ -38,6 +38,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         5: 'priority'
     }
 
+
     # Invalid data
     INVALID_PRIORITY = '-1'
 
@@ -445,4 +446,6 @@ class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_all_tasks()
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+
 
