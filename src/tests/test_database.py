@@ -19,7 +19,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         'completed': False,
         'category': "Work",
         'notes': "Important project deadline",
-        'priority': "1"
+        'priority': 1
     }
     
     # Partial task data
@@ -45,7 +45,20 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     # Test database configuration
     TEST_DB_DIR = os.path.join(os.path.dirname(__file__), 'test_databases')
     TEST_DB_NAME = os.path.join(TEST_DB_DIR, 'test_todo.db')
-    
+
+    def wait_for_file_operation(self, condition_func, timeout=5, initial_delay=0.1):
+        """Wait for file operation with exponential backoff."""
+        delay = initial_delay
+        end_time = time.time() + timeout
+        
+        while time.time() < end_time:
+            if condition_func():
+                return True
+            time.sleep(delay)
+            delay = min(delay * 2, timeout)
+        
+        return False
+
     @classmethod
     def setUpClass(cls):
         """Create test database directory."""
@@ -75,7 +88,9 @@ class BaseTodoDatabaseTest(unittest.TestCase):
 
     def setUp(self):
         """Initialize test database before each test case."""
-        time.sleep(0.5)  # Wait for previous test cleanup
+        self.wait_for_file_operation(
+            lambda: not os.path.exists(self.TEST_DB_NAME)
+        )
         
         # Retry mechanism for file operations
         max_retries = 3
@@ -95,7 +110,9 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         if hasattr(self, 'db'):
             del self.db
         
-        time.sleep(0.5)  # Increased delay
+        self.wait_for_file_operation(
+            lambda: not os.path.exists(self.TEST_DB_NAME)
+        )
         
         max_retries = 3
         for _ in range(max_retries):
