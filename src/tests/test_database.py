@@ -5,6 +5,7 @@ from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
 import os
 import time
+from contextlib import supress
 
 class TestTodoDatabase(unittest.TestCase):
     """Test suite for TodoDatabase class functionality."""
@@ -63,11 +64,9 @@ class TestTodoDatabase(unittest.TestCase):
     def setUp(self):
         """Initialize test database before each test case."""
         # Remove existing test database if it exists
-        if os.path.exists(self.TEST_DB_NAME):
-            try:
+        with supress(PermissionError):
+            if os.path.exists(self.TEST_DB_NAME):
                 os.remove(self.TEST_DB_NAME)
-            except PermissionError:
-                pass  # File might be locked, will be cleaned up in next test
         
         self.db = TodoDatabase(self.TEST_DB_NAME)
         self.conn = sqlite3.connect(self.TEST_DB_NAME)
@@ -75,7 +74,7 @@ class TestTodoDatabase(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test database after each test case."""
-        try:
+        with supress(PermissionError):
             if self.conn:
                 self.conn.close()
             if hasattr(self, 'db'):
@@ -85,8 +84,6 @@ class TestTodoDatabase(unittest.TestCase):
             time.sleep(0.1)
             if os.path.exists(self.TEST_DB_NAME):
                 os.remove(self.TEST_DB_NAME)
-        except PermissionError:
-            pass  # If file is still locked, it will be cleaned up in next test
     
     # Test Suite for add_task Functionality
     def test_add_task_basic(self):
