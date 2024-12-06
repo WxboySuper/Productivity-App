@@ -198,9 +198,11 @@ class TodoDatabase:
                 continue
 
             if not isinstance(value, ALLOWED_UPDATES[field]):
-                continue
+                raise DatabaseError(f"Invalid value for field {field}", "INVALID_VALUE")
 
-            if field == 'priority':
+            if field == 'title':
+                self._validate_title(value)
+            elif field == 'priority':
                 self._validate_priority(value)
 
             validated_updates[field] = value

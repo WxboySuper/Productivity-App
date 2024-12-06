@@ -16,6 +16,7 @@ class TestTodoDatabase(unittest.TestCase):
     # Full task data
     FULL_TASK_DATA = {
         'title': "Complete Project",
+        'completed': False,
         'category': "Work",
         'notes': "Important project deadline",
         'priority': "1"
@@ -36,6 +37,14 @@ class TestTodoDatabase(unittest.TestCase):
         "priority": "2"
     }
 
+    UPDATED_TASK_DATA = {
+        'title': 'Updated Task Title',
+        'completed': True,
+        'category': 'Personal',
+        'notes': 'Updated notes',
+        'priority': '2'
+    }
+
     # Database field mapping
     FIELD_MAPPING = {
         1: 'title',
@@ -47,7 +56,7 @@ class TestTodoDatabase(unittest.TestCase):
 
     
     # Invalid data
-    INVALID_PRIORITY = -1
+    INVALID_PRIORITY = '-1'
 
     def setUp(self):
         """Initialize test database before each test case."""
@@ -163,4 +172,85 @@ class TestTodoDatabase(unittest.TestCase):
         mock_connect.side_effect = sqlite3.OperationalError("Unable to connect to the database")
         with self.assertRaises(DatabaseError) as cm:
             self.db.delete_task(1)
+        self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+    # Test Suite for Update Task Functionality
+    def test_update_task_successful(self):
+        """Verify that a task can be successfully updated with valid fields."""
+        task_data = self.FULL_TASK_DATA
+        deadline_var = datetime.now()
+        deadline_str = deadline_var.strftime('%Y-%m-%d %H:%M:%S')
+        task_id = self.db.add_task(
+            title=task_data['title'],
+            deadline=deadline_str,
+            category=task_data['category'],
+            notes=task_data['notes'],
+            priority=task_data['priority']
+        )
+        
+        updates = {
+                'title': "Updated Task Title",
+                'completed': True,
+                'deadline': deadline_str,
+                'category': "Updated Category",
+                'notes': "Updated Notes",
+                'priority': "2"
+            }
+
+        self.db.update_task(task_id, **updates)
+
+        task = self.db.get_task(task_id)
+        self.assertEqual(task[1], updates['title'])
+        self.assertEqual(task[2], True)
+        self.assertEqual(task[3], updates['deadline'])
+        self.assertEqual(task[4], updates['category'])
+        self.assertEqual(task[5], updates['notes'])
+        self.assertEqual(task[6], int(updates['priority']))
+    
+    def test_update_nonexistent_task(self):
+        """Verify that updating a nonexistent task raises a DatabaseError."""
+        updates = {'title': 'Nonexistent Task'}
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(9999, **updates)
+        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
+    
+    def test_update_task_with_invalid_field(self):
+        """Verify that updating a task with an invalid field does not change the task."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        updates = {'invalid_field': "Invalid Value"}
+        self.db.update_task(task_id, **updates)
+        
+        task = self.db.get_task(task_id)
+        self.assertEqual(task[1], self.BASIC_TASK_TITLE)
+    
+    def test_update_task_invalid_priority(self):
+        """Verify that updating a task with an invalid priority raises a DatabaseError."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        updates = {'priority': self.INVALID_PRIORITY}
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(task_id, **updates)
+        self.assertEqual(cm.exception.code, "INVALID_PRIORITY")
+    
+    def test_update_task_empty_title(self):
+        """Verify that updating a task with an empty title raises a DatabaseError."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        updates = {'title': ""}
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(task_id, **updates)
+        self.assertEqual(cm.exception.code, "EMPTY_TITLE")
+    
+    def test_update_task_none_title(self):
+        """Verify that updating a task with a None title raises a DatabaseError."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        updates = {'title': None}
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(task_id, **updates)
+        self.assertEqual(cm.exception.code, "INVALID_VALUE")
+    
+    @patch('sqlite3.connect')
+    def test_update_task_db_connection_error(self, mock_connect):
+        """Verify that a database connection error during update is handled correctly."""
+        mock_connect.side_effect = sqlite3.OperationalError("Unable to connect to the database")
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(1, title="New Title")
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
