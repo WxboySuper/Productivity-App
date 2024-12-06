@@ -64,7 +64,7 @@ class TestTodoDatabase(unittest.TestCase):
         self.conn = sqlite3.connect(self.TEST_DB_NAME)
         self.db.init_database(self.conn)
     
-    # Test Suite for Add Task Functionality
+    # Test Suite for add_task Functionality
     def test_add_task_basic(self):
         """Verify basic task creation with minimal required fields."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -136,7 +136,7 @@ class TestTodoDatabase(unittest.TestCase):
             self.db.add_task(self.BASIC_TASK_TITLE, priority=self.INVALID_PRIORITY)
         self.assertEqual(cm.exception.code, "INVALID_PRIORITY")
 
-    # Test Suite for Delete Task Functionality
+    # Test Suite for delete_task Functionality
     def test_task_delete(self):
         """Verify that a task can be deleted by its ID."""
         deadline_var = datetime.now()
@@ -175,7 +175,7 @@ class TestTodoDatabase(unittest.TestCase):
             self.db.delete_task(1)
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
 
-    # Test Suite for Update Task Functionality
+    # Test Suite for update_task Functionality
     def test_update_task_successful(self):
         """Verify that a task can be successfully updated with valid fields."""
         task_data = self.FULL_TASK_DATA
@@ -295,3 +295,24 @@ class TestTodoDatabase(unittest.TestCase):
         with self.assertRaises(DatabaseError) as cm:
             self.db.mark_completed(1)
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+    
+    # Test Suite for get_task Functionality
+    def test_get_task_successful(self):
+        """Verify that a task can be successfully retrieved."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        task = self.db.get_task(task_id)
+        self.assertEqual(task[0], task_id,)
+        self.assertEqual(task[1], self.BASIC_TASK_TITLE)
+    
+    def test_get_task_nonexistent_task(self):
+        """Verify that retrieving a nonexistent task raises DatabaseError."""
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.get_task(9999)
+        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
+    
+    @patch('sqlite3.connect')
+    def test_get_task_db_connection_error(self, mock_connect):
+        """Verify that a database connection error is handled correctly."""
+        mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.get_task(1)

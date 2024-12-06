@@ -284,14 +284,18 @@ class TodoDatabase:
             DatabaseError: If the task with the specified ID is not found or database error occurs.
         """
         query = 'SELECT * FROM tasks WHERE id = ?'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
-    
-            task = cursor.fetchone()
-            if task is None:
-                raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
-            return task
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+        
+                task = cursor.fetchone()
+                if task is None:
+                    raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
+                return task
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def get_all_tasks(self):
         """
