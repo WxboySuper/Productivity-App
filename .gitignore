@@ -2,6 +2,7 @@
 forge.config.js
 todo.db
 test_todo.db
+test_todo_get_all.db
 
 # Development  Folders
 /.venv
