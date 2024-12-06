@@ -368,8 +368,8 @@ class TodoDatabase:
     
     def clear_task_labels(self, task_id):
         query = "DELETE FROM task_labels WHERE task_id = ?"
-        with self.conn:
-            cursor = self.conn.cursor()
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
             cursor.execute(query, (task_id,))
 
     def add_label(self, name, color=None):
@@ -377,12 +377,12 @@ class TodoDatabase:
         INSERT OR IGNORE INTO labels (name, color)
         VALUES (?, ?)
         """
-        with self.conn:
-            cursor = self.conn.cursor()
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
             cursor.execute(query, (name, color))
             
         # Get the label_id (whether it was just inserted or already existed)
         query = "SELECT id FROM labels WHERE name = ?"
-        cursor = self.conn.cursor()
+        cursor = conn.cursor()
         cursor.execute(query, (name,))
         return cursor.fetchone()[0]
