@@ -270,39 +270,6 @@ class TodoDatabase:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
-    def get_task_labels(self, task_id):
-        """
-        Retrieves all labels associated with the specified task.
-
-        Args:
-            task_id (int): The ID of the task to retrieve labels for.
-
-        Returns:
-            list: A list of tuples, where each tuple represents a label associated with the task.
-                  The tuple contains the label's ID, name, and color.
-        """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT l.* FROM labels l
-                JOIN task_labels tl ON l.id = tl.label_id
-                WHERE tl.task_id = ?
-            ''', (task_id,))
-            return cursor.fetchall()
-
-    def get_all_tasks(self):
-        """
-        Returns all tasks from the database, ordered by creation date in descending order.
-
-        Returns:
-            list: A list of tuples, where each tuple represents a task and contains the task's column values.
-        """
-        query = 'SELECT * FROM tasks ORDER BY created_at DESC'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query)
-            return cursor.fetchall()
-
     def get_task(self, task_id):
         """
         Retrieves a task from the database by its ID.
@@ -326,6 +293,34 @@ class TodoDatabase:
                 raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
             return task
 
+    def get_all_tasks(self):
+        """
+        Returns all tasks from the database, ordered by creation date in descending order.
+
+        Returns:
+            list: A list of tuples, where each tuple represents a task and contains the task's column values.
+        """
+        query = 'SELECT * FROM tasks ORDER BY created_at DESC'
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            return cursor.fetchall()
+
+    def add_label(self, name, color=None):
+        query = """
+        INSERT OR IGNORE INTO labels (name, color)
+        VALUES (?, ?)
+        """
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (name, color))
+            
+        # Get the label_id (whether it was just inserted or already existed)
+        query = "SELECT id FROM labels WHERE name = ?"
+        cursor = conn.cursor()
+        cursor.execute(query, (name,))
+        return cursor.fetchone()[0]
+
     def delete_label(self, label_id):
         """
         Deletes a label from the database by its ID.
@@ -340,6 +335,32 @@ class TodoDatabase:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM task_labels WHERE label_id = ?', (label_id,))
             cursor.execute('DELETE FROM labels WHERE id = ?', (label_id,))
+
+    def clear_task_labels(self, task_id):
+        query = "DELETE FROM task_labels WHERE task_id = ?"
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (task_id,))
+
+    def get_task_labels(self, task_id):
+        """
+        Retrieves all labels associated with the specified task.
+
+        Args:
+            task_id (int): The ID of the task to retrieve labels for.
+
+        Returns:
+            list: A list of tuples, where each tuple represents a label associated with the task.
+                  The tuple contains the label's ID, name, and color.
+        """
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT l.* FROM labels l
+                JOIN task_labels tl ON l.id = tl.label_id
+                WHERE tl.task_id = ?
+            ''', (task_id,))
+            return cursor.fetchall()
 
     def get_all_labels(self):
         """
@@ -369,24 +390,3 @@ class TodoDatabase:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(query, (task_id, label_id))
-    
-    def clear_task_labels(self, task_id):
-        query = "DELETE FROM task_labels WHERE task_id = ?"
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
-
-    def add_label(self, name, color=None):
-        query = """
-        INSERT OR IGNORE INTO labels (name, color)
-        VALUES (?, ?)
-        """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (name, color))
-            
-        # Get the label_id (whether it was just inserted or already existed)
-        query = "SELECT id FROM labels WHERE name = ?"
-        cursor = conn.cursor()
-        cursor.execute(query, (name,))
-        return cursor.fetchone()[0]
