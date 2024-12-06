@@ -365,7 +365,10 @@ class TestTodoDatabaseGetAllTasks(unittest.TestCase):
                 os.remove(cls.TEST_DB_NAME)
             except PermissionError:
                 time.sleep(0.5)  # Wait longer if file is locked
-                os.remove(cls.TEST_DB_NAME)
+                try:
+                    os.remove(cls.TEST_DB_NAME)
+                except PermissionError:
+                    pass
 
     def setUp(self):
         """Create fresh database before each test."""
