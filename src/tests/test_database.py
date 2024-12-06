@@ -5,7 +5,7 @@ from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
 import os
 import time
-from contextlib import supress
+from contextlib import suppress
 
 class TestTodoDatabase(unittest.TestCase):
     """Test suite for TodoDatabase class functionality."""
@@ -64,7 +64,7 @@ class TestTodoDatabase(unittest.TestCase):
     def setUp(self):
         """Initialize test database before each test case."""
         # Remove existing test database if it exists
-        with supress(PermissionError):
+        with suppress(PermissionError):
             if os.path.exists(self.TEST_DB_NAME):
                 os.remove(self.TEST_DB_NAME)
         
@@ -74,13 +74,12 @@ class TestTodoDatabase(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test database after each test case."""
-        with supress(PermissionError):
+        with suppress(PermissionError):
             if self.conn:
                 self.conn.close()
             if hasattr(self, 'db'):
                 del self.db
             # Add a small delay to ensure connections are fully closed
-            import time
             time.sleep(0.1)
             if os.path.exists(self.TEST_DB_NAME):
                 os.remove(self.TEST_DB_NAME)
