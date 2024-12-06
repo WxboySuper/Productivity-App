@@ -7,9 +7,9 @@ import os
 import time
 from contextlib import suppress
 
-class TestTodoDatabase(unittest.TestCase):
-    """Test suite for TodoDatabase class functionality."""
-    
+class TestTodoDatabaseAddTask(unittest.TestCase):
+    """Test suite for add_task function in TodoDatabase class."""
+
     # Test database configuration
     TEST_DB_NAME = 'test_todo.db'
     
@@ -32,22 +32,6 @@ class TestTodoDatabase(unittest.TestCase):
         'priority': "2"
     }
 
-    # Task data for deletion test
-    DELETE_TASK_DATA = {
-        'title': "Quarterly Report",
-        "category": "Work",
-        "notes": "Include Q3 Metrics",
-        "priority": "2"
-    }
-
-    UPDATED_TASK_DATA = {
-        'title': 'Updated Task Title',
-        'completed': True,
-        'category': 'Personal',
-        'notes': 'Updated notes',
-        'priority': '2'
-    }
-
     # Database field mapping
     FIELD_MAPPING = {
         1: 'title',
@@ -57,7 +41,6 @@ class TestTodoDatabase(unittest.TestCase):
         5: 'priority'
     }
 
-    
     # Invalid data
     INVALID_PRIORITY = '-1'
 
@@ -84,7 +67,6 @@ class TestTodoDatabase(unittest.TestCase):
             if os.path.exists(self.TEST_DB_NAME):
                 os.remove(self.TEST_DB_NAME)
     
-    # Test Suite for add_task Functionality
     def test_add_task_basic(self):
         """Verify basic task creation with minimal required fields."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -156,6 +138,56 @@ class TestTodoDatabase(unittest.TestCase):
             self.db.add_task(self.BASIC_TASK_TITLE, priority=self.INVALID_PRIORITY)
         self.assertEqual(cm.exception.code, "INVALID_PRIORITY")
 
+class TestTodoDatabaseDeleteTask(unittest.TestCase):
+    """Test suite for TodoDatabase class delete_task method."""
+    
+    # Test database configuration
+    TEST_DB_NAME = 'test_todo.db'
+
+    # Task data for deletion test
+    DELETE_TASK_DATA = {
+        'title': "Quarterly Report",
+        "category": "Work",
+        "notes": "Include Q3 Metrics",
+        "priority": "2"
+    }
+
+    # Database field mapping
+    FIELD_MAPPING = {
+        1: 'title',
+        2: 'deadline', 
+        3: 'category',
+        4: 'notes',
+        5: 'priority'
+    }
+
+    
+    # Invalid data
+    INVALID_PRIORITY = '-1'
+    
+    def setUp(self):
+        """Initialize test database before each test case."""
+        # Remove existing test database if it exists
+        with suppress(PermissionError):
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+        
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        self.conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db.init_database(self.conn)
+
+    def tearDown(self):
+        """Clean up test database after each test case."""
+        with suppress(PermissionError):
+            if self.conn:
+                self.conn.close()
+            if hasattr(self, 'db'):
+                del self.db
+            # Add a small delay to ensure connections are fully closed
+            time.sleep(0.1)
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+
     # Test Suite for delete_task Functionality
     def test_task_delete(self):
         """Verify that a task can be deleted by its ID."""
@@ -195,7 +227,60 @@ class TestTodoDatabase(unittest.TestCase):
             self.db.delete_task(1)
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
 
-    # Test Suite for update_task Functionality
+class TestTodoDatabaseUpdateTask(unittest.TestCase):
+    """Test suite for TodoDatabase class update_task method."""
+
+    # Test database configuration
+    TEST_DB_NAME = 'test_todo.db'
+
+    # Test data constants
+    BASIC_TASK_TITLE = "Test Task"
+
+    # Full task data
+    FULL_TASK_DATA = {
+        'title': "Complete Project",
+        'completed': False,
+        'category': "Work",
+        'notes': "Important project deadline",
+        'priority': "1"
+    }
+
+    # Database field mapping
+    FIELD_MAPPING = {
+        1: 'title',
+        2: 'deadline', 
+        3: 'category',
+        4: 'notes',
+        5: 'priority'
+    }
+
+    
+    # Invalid data
+    INVALID_PRIORITY = '-1'
+
+    def setUp(self):
+        """Initialize test database before each test case."""
+        # Remove existing test database if it exists
+        with suppress(PermissionError):
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+        
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        self.conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db.init_database(self.conn)
+
+    def tearDown(self):
+        """Clean up test database after each test case."""
+        with suppress(PermissionError):
+            if self.conn:
+                self.conn.close()
+            if hasattr(self, 'db'):
+                del self.db
+            # Add a small delay to ensure connections are fully closed
+            time.sleep(0.1)
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+    
     def test_update_task_successful(self):
         """Verify that a task can be successfully updated with valid fields."""
         task_data = self.FULL_TASK_DATA
@@ -285,7 +370,6 @@ class TestTodoDatabase(unittest.TestCase):
         self.assertEqual(task[4], "")
         self.assertEqual(task[5], "")
 
-
     @patch('sqlite3.connect')
     def test_update_task_db_connection_error(self, mock_connect):
         """Verify that a database connection error during update is handled correctly."""
@@ -293,6 +377,49 @@ class TestTodoDatabase(unittest.TestCase):
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(1, title="New Title")
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+class TestTodoDatabaseMarkCompleted(unittest.TestCase):
+    """"Test suite for TodoDatabase.get_task method."""
+    # Test database configuration
+    TEST_DB_NAME = 'test_todo.db'
+    
+    # Test data constants
+    BASIC_TASK_TITLE = "Test Task"
+
+    # Database field mapping
+    FIELD_MAPPING = {
+        1: 'title',
+        2: 'deadline', 
+        3: 'category',
+        4: 'notes',
+        5: 'priority'
+    }
+    
+    # Invalid data
+    INVALID_PRIORITY = '-1'
+
+    def setUp(self):
+        """Initialize test database before each test case."""
+        # Remove existing test database if it exists
+        with suppress(PermissionError):
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+        
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        self.conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db.init_database(self.conn)
+
+    def tearDown(self):
+        """Clean up test database after each test case."""
+        with suppress(PermissionError):
+            if self.conn:
+                self.conn.close()
+            if hasattr(self, 'db'):
+                del self.db
+            # Add a small delay to ensure connections are fully closed
+            time.sleep(0.1)
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
     
     # Test Suite for mark_completed Functionality
     def test_mark_completed_successful(self):
@@ -315,7 +442,50 @@ class TestTodoDatabase(unittest.TestCase):
         with self.assertRaises(DatabaseError) as cm:
             self.db.mark_completed(1)
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+class TestTodoDatabaseGetTask(unittest.TestCase):
+    """Test suite for TodoDatabase.get_task method."""
+    # Test database configuration
+    TEST_DB_NAME = 'test_todo.db'
     
+    # Test data constants
+    BASIC_TASK_TITLE = "Test Task"
+
+    # Database field mapping
+    FIELD_MAPPING = {
+        1: 'title',
+        2: 'deadline', 
+        3: 'category',
+        4: 'notes',
+        5: 'priority'
+    }
+    
+    # Invalid data
+    INVALID_PRIORITY = '-1'
+
+    def setUp(self):
+        """Initialize test database before each test case."""
+        # Remove existing test database if it exists
+        with suppress(PermissionError):
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+        
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        self.conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db.init_database(self.conn)
+
+    def tearDown(self):
+        """Clean up test database after each test case."""
+        with suppress(PermissionError):
+            if self.conn:
+                self.conn.close()
+            if hasattr(self, 'db'):
+                del self.db
+            # Add a small delay to ensure connections are fully closed
+            time.sleep(0.1)
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+
     # Test Suite for get_task Functionality
     def test_get_task_successful(self):
         """Verify that a task can be successfully retrieved."""
@@ -409,3 +579,4 @@ class TestTodoDatabaseGetAllTasks(unittest.TestCase):
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_all_tasks()
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
