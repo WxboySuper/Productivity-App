@@ -314,7 +314,7 @@ class TodoDatabase:
             tuple: A tuple containing the task's column values.
 
         Raises:
-            ValueError: If the task with the specified ID is not found.
+            DatabaseError: If the task with the specified ID is not found or database error occurs.
         """
         query = 'SELECT * FROM tasks WHERE id = ?'
         with sqlite3.connect(self.db_file) as conn:
