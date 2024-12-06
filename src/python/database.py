@@ -8,7 +8,7 @@ os.makedirs(log_dir, exist_ok=True)
 
 handler = RotatingFileHandler(
     os.path.join(log_dir, 'database.log'),
-    maxBytes=int(os.getenv("LOG_MAX_BYTES", "1024*1024")), # Default 1MB
+    maxBytes=int(os.getenv("LOG_MAX_BYTES", str(1024*1024))), # Default 1MB
     backupCount = int(os.getenv("LOG_BACKUP_COUNT", "5")), # Default 5 backups
 )
 
