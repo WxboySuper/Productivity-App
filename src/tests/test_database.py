@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
 import os
+import time
 
 class TestTodoDatabase(unittest.TestCase):
     """Test suite for TodoDatabase class functionality."""
@@ -340,18 +341,73 @@ class TestTodoDatabase(unittest.TestCase):
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_task(1)
     
-    # Test Suite for get_all_tasks Functionality
+class TestTodoDatabaseGetAllTasks(unittest.TestCase):
+    """Separate test class for get_all_tasks functionality to ensure isolation."""
+    
+    TEST_DB_NAME = 'test_todo_get_all.db'
+    BASIC_TASK_TITLE = "Test Task"
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up test class."""
+        if os.path.exists(cls.TEST_DB_NAME):
+            try:
+                os.remove(cls.TEST_DB_NAME)
+            except PermissionError:
+                time.sleep(1.0)  # Increased delay for Windows
+                try:
+                    os.remove(cls.TEST_DB_NAME)
+                except PermissionError:
+                    pass
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up after all tests."""
+        if os.path.exists(cls.TEST_DB_NAME):
+            try:
+                os.remove(cls.TEST_DB_NAME)
+            except PermissionError:
+                time.sleep(0.5)  # Wait longer if file is locked
+                os.remove(cls.TEST_DB_NAME)
+
+    def setUp(self):
+        """Create fresh database before each test."""
+        time.sleep(0.5)  # Wait for previous test cleanup
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        time.sleep(0.2)  # Ensure database is ready
+
+    def tearDown(self):
+        """Clean up after each test."""
+        try:
+            if hasattr(self, 'db'):
+                del self.db
+            time.sleep(0.5)  # Increased delay for Windows
+            if os.path.exists(self.TEST_DB_NAME):
+                os.remove(self.TEST_DB_NAME)
+        except (PermissionError, sqlite3.Error):
+            time.sleep(1.0)  # Increased delay for Windows
+            try:
+                if os.path.exists(self.TEST_DB_NAME):
+                    os.remove(self.TEST_DB_NAME)
+            except (PermissionError, sqlite3.Error):
+                pass  # Will be cleaned up in next test
+
     def test_get_all_tasks_successful(self):
         """Verify that all tasks can be successfully retrieved."""
         self.db.add_task(self.BASIC_TASK_TITLE)
+        time.sleep(0.1)  # Ensure first task is committed
         self.db.add_task(self.BASIC_TASK_TITLE)
+        time.sleep(0.1)  # Ensure second task is committed
+        
         tasks = self.db.get_all_tasks()
         self.assertEqual(len(tasks), 2)
-    
+
     @patch('sqlite3.connect')
     def test_get_all_tasks_db_connection_error(self, mock_connect):
         """Verify that a database connection error is handled correctly."""
+        # Set up mock before creating database instance
         mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+        
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_all_tasks()
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
