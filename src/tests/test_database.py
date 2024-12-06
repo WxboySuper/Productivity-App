@@ -337,6 +337,7 @@ class TestTodoDatabase(unittest.TestCase):
         mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_task(1)
+        self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
     
 class TestTodoDatabaseGetAllTasks(unittest.TestCase):
     """Separate test class for get_all_tasks functionality to ensure isolation."""
