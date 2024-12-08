@@ -21,14 +21,14 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         'completed': False,
         'category': "Work",
         'notes': "Important project deadline",
-        'priority': "1"
+        'priority': "HIGH"
     }
     
     # Partial task data
     PARTIAL_TASK_DATA = {
         'title': "Partial Task",
         'category': "Personal",
-        'priority': "2"
+        'priority': "MEDIUM"
     }
 
     # Database field mapping
@@ -157,7 +157,7 @@ class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
         self.assertEqual(task[2], task_data['deadline'])  # deadline
         self.assertEqual(task[3], task_data['category'])  # category
         self.assertEqual(task[4], task_data['notes'])  # notes
-        self.assertEqual(task[5], int(task_data['priority']))  # priority
+        self.assertEqual(task[5], task_data['priority'])  # priority
 
     def test_add_task_with_partial_fields(self):
         """Verify task creation with only some fields populated."""
@@ -269,7 +269,7 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
                 'deadline': deadline_str,
                 'category': "Updated Category",
                 'notes': "Updated Notes",
-                'priority': "2"
+                'priority': "MEDIUM"
             }
 
         self.db.update_task(task_id, **updates)
@@ -286,8 +286,8 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
         self.assertEqual(task[4], updates['category'])
         self.assertIsInstance(task[5], str, "Notes should be a string")
         self.assertEqual(task[5], updates['notes'])
-        self.assertIsInstance(task[6], int, "Priority should be an integer")
-        self.assertEqual(task[6], int(updates['priority']))
+        self.assertIsInstance(task[6], str, "Priority should be a string")
+        self.assertEqual(task[6], updates['priority'])
     
     def test_update_nonexistent_task(self):
         """Verify that updating a nonexistent task raises a DatabaseError."""

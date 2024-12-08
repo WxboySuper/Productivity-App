@@ -136,15 +136,15 @@ class TodoDatabase:
     def _validate_priority(priority):
         """Validates the priority value."""
         VALID_PRIORITIES = {
-            'ASAP': 0,  # Highest priority
-            '1': 1,
-            '2': 2,
-            '3': 3,
-            '4': 4
+            'ASAP': 0,    # Highest priority
+            'HIGH': 1,    # High priority
+            'MEDIUM': 2,  # Medium priority
+            'LOW': 3,     # Low priority
+            'LOWEST': 4   # Lowest priority
         }
         if priority is not None and priority not in VALID_PRIORITIES:
             raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
-        return VALID_PRIORITIES[priority] if priority else None
+        return VALID_PRIORITIES.get(priority)
 
     @staticmethod
     def _validate_title(title):
