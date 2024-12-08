@@ -12,6 +12,8 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     
     # Test data constants
     BASIC_TASK_TITLE = "Test Task"
+
+    BASIC_LABEL_TITLE = "Test Label"
     
     # Full task data
     FULL_TASK_DATA = {
@@ -42,87 +44,77 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     # Invalid data
     INVALID_PRIORITY = '-1'
 
-    # Test database configuration
     TEST_DB_DIR = os.path.join(os.path.dirname(__file__), 'test_databases')
-    TEST_DB_NAME = os.path.join(TEST_DB_DIR, 'test_todo.db')
-
-    @staticmethod
-    def wait_for_file_operation(condition_func, timeout=5, initial_delay=0.1):
-        """Wait for file operation with exponential backoff."""
-        delay = initial_delay
-        end_time = time.time() + timeout
-        
-        while time.time() < end_time:
-            if condition_func():
-                return True
-            time.sleep(delay)
-            delay = min(delay * 2, timeout)
-        
-        return False
+    _connection_pool = {}
 
     @classmethod
     def setUpClass(cls):
         """Create test database directory."""
         os.makedirs(cls.TEST_DB_DIR, exist_ok=True)
 
-    @classmethod
-    def tearDownClass(cls):
-        """Remove all test databases."""
-        if os.path.exists(cls.TEST_DB_DIR):
-            time.sleep(1.0)  # Increased delay
-            for file in os.listdir(cls.TEST_DB_DIR):
-                max_retries = 3
-                for _ in range(max_retries):
-                    try:
-                        file_path = os.path.join(cls.TEST_DB_DIR, file)
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
-                        break
-                    except PermissionError:
-                        time.sleep(0.5)
-            try:
-                os.rmdir(cls.TEST_DB_DIR)
-            except PermissionError:
-                pass
-            except OSError:
-                pass
-
     def setUp(self):
-        """Initialize test database before each test case."""
-        self.wait_for_file_operation(
-            lambda: not os.path.exists(self.TEST_DB_NAME)
-        )
-        
-        # Retry mechanism for file operations
-        max_retries = 3
-        for _ in range(max_retries):
+        """Initialize clean database before each test."""
+        # Force close any existing connections
+        if hasattr(self, 'db'):
+            self.db.__del__()
+            del self.db
+
+        # Clear connection pool
+        if self.TEST_DB_NAME in self._connection_pool:
             try:
-                if os.path.exists(self.TEST_DB_NAME):
-                    os.remove(self.TEST_DB_NAME)
-                break
-            except PermissionError:
-                time.sleep(0.5)
-        
-        # Create new database instance
+                self._connection_pool[self.TEST_DB_NAME].close()
+            except Exception:
+                pass
+            del self._connection_pool[self.TEST_DB_NAME]
+
+        # Ensure database file is removed
+        self._remove_db_file()
+            
+        # Create fresh database
         self.db = TodoDatabase(self.TEST_DB_NAME)
 
     def tearDown(self):
-        """Clean up test database after each test case."""
+        """Clean up after each test."""
+        # Close database connection
         if hasattr(self, 'db'):
+            self.db.__del__()
             del self.db
-        
-        self.wait_for_file_operation(
-            lambda: not os.path.exists(self.TEST_DB_NAME)
-        )
-        
-        max_retries = 3
-        for _ in range(max_retries):
+
+        # Clear connection pool
+        if self.TEST_DB_NAME in self._connection_pool:
+            try:
+                self._connection_pool[self.TEST_DB_NAME].close()
+            except Exception:
+                pass
+            del self._connection_pool[self.TEST_DB_NAME]
+
+        # Remove database file
+        self._remove_db_file()
+
+    def _remove_db_file(self):
+        """Helper to safely remove database file."""
+        if not hasattr(self, 'TEST_DB_NAME') or ':memory:' in self.TEST_DB_NAME:
+            return
+
+        max_retries = 5
+        for i in range(max_retries):
             try:
                 if os.path.exists(self.TEST_DB_NAME):
                     os.remove(self.TEST_DB_NAME)
                 break
             except PermissionError:
-                time.sleep(0.5)
+                if i < max_retries - 1:
+                    time.sleep(0.1)
+                continue
+
+    @classmethod
+    def get_connection(cls, db_name):
+        """Get database connection from pool."""
+        if db_name not in cls._connection_pool:
+            cls._connection_pool[db_name] = sqlite3.connect(db_name)
+            # Enable foreign keys
+            cls._connection_pool[db_name].execute("PRAGMA foreign_keys = ON")
+        return cls._connection_pool[db_name]
 
 class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
     """Test suite for add_task function in TodoDatabase class."""
@@ -427,32 +419,6 @@ class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
 
     TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get_all.db')
 
-    @classmethod
-    def setUpClass(cls):
-        """Set up test class."""
-        if os.path.exists(cls.TEST_DB_NAME):
-            try:
-                os.remove(cls.TEST_DB_NAME)
-            except PermissionError:
-                time.sleep(1.0)  # Increased delay for Windows
-                try:
-                    os.remove(cls.TEST_DB_NAME)
-                except PermissionError:
-                    pass
-
-    @classmethod
-    def tearDownClass(cls):
-        """Clean up after all tests."""
-        if os.path.exists(cls.TEST_DB_NAME):
-            try:
-                os.remove(cls.TEST_DB_NAME)
-            except PermissionError:
-                time.sleep(0.5)  # Wait longer if file is locked
-                try:
-                    os.remove(cls.TEST_DB_NAME)
-                except PermissionError:
-                    pass
-
     def setUp(self):
         super().setUp()
 
@@ -474,3 +440,93 @@ class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
             self.db.get_all_tasks()
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
 
+class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
+    """Test suite for add_label function in TodoDatabase class."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_add_label.db')
+
+    def setUp(self):
+        super().setUp()
+    
+    def test_add_label_successful(self):
+        """Verify that a label can be successfully added."""
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        self.assertIsNotNone(label_id)
+        label = self.db.get_label(label_id)
+        self.assertEqual(label[0], label_id)
+
+    def test_add_label_with_color(self):
+        """Verify that a label can be added with a color value."""
+        test_name = f"ColorLabel_{int(time.time())}"  # Unique name
+        test_color = "#FF0000"
+        
+        # Verify schema first
+        with sqlite3.connect(self.db.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(labels)")
+            columns = [col[1] for col in cursor.fetchall()]
+            self.assertIn('color', columns, "Labels table missing color column")
+        
+        # Add label with color
+        label_id = self.db.add_label(test_name, color=test_color)
+        self.assertIsNotNone(label_id, "Should return valid label ID")
+        
+        # Verify using explicit column names
+        with sqlite3.connect(self.db.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, name, color 
+                FROM labels 
+                WHERE id = ?
+            """, (label_id,))
+            label = cursor.fetchone()
+            
+            self.assertIsNotNone(label, f"Label {label_id} not found")
+            self.assertEqual(label[0], label_id, "ID mismatch")
+            self.assertEqual(label[1], test_name, "Name mismatch")
+            self.assertEqual(
+                label[2], 
+                test_color, 
+                f"Color mismatch: expected '{test_color}', got '{label[2]}'"
+            )
+
+    def test_add_duplicate_label(self):
+        """Verify that adding a duplicate label returns the existing label's ID."""
+        first_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        second_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        self.assertEqual(first_id, second_id)
+
+    def test_add_label_empty_name(self):
+        """Verify that adding a label with empty name raises DatabaseError."""
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.add_label("")
+        self.assertEqual(cm.exception.code, "EMPTY_LABEL")
+
+    def test_add_label_none_name(self):
+        """Verify that adding a label with None name raises DatabaseError."""
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.add_label(None)
+        self.assertEqual(cm.exception.code, "INVALID_LABEL")
+
+    def test_add_label_whitespace_name(self):
+        """Verify that adding a label with whitespace name raises DatabaseError."""
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.add_label("   ")
+        self.assertEqual(cm.exception.code, "EMPTY_LABEL")
+
+    @patch('sqlite3.connect')
+    def test_add_label_db_connection_error(self, mock_connect):
+        """Verify that a database connection error is handled correctly."""
+        mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.add_label(self.BASIC_LABEL_TITLE)
+        self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+    def test_add_label_persists(self):
+        """Verify that added labels persist in the database."""
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        
+        # Create new database instance to verify persistence
+        new_db = TodoDatabase(self.TEST_DB_NAME)
+        labels = new_db.get_all_labels()
+        self.assertTrue(any(label[0] == label_id for label in labels))

@@ -350,19 +350,82 @@ class TodoDatabase:
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def add_label(self, name, color=None):
-        query = """
-        INSERT OR IGNORE INTO labels (name, color)
-        VALUES (?, ?)
         """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (name, color))
-            
-        # Get the label_id (whether it was just inserted or already existed)
-        query = "SELECT id FROM labels WHERE name = ?"
-        cursor = conn.cursor()
-        cursor.execute(query, (name,))
-        return cursor.fetchone()[0]
+        Adds a new label to the database or returns existing label ID.
+
+        Args:
+            name (str): The name of the label
+            color (str, optional): The color code for the label
+
+        Returns:
+            int: The ID of the created or existing label
+
+        Raises:
+            DatabaseError: If there is an error adding the label. Possible error codes:
+                - INVALID_LABEL: If the label name is None
+                - EMPTY_LABEL: If the label name is empty or whitespace
+                - DB_CONN_ERROR: If database connection fails
+                - DB_QUERY_ERROR: If query execution fails
+        """
+        # Validate label name
+        if name is None:
+            raise DatabaseError("Label name cannot be None", "INVALID_LABEL")
+        if name.strip() == "":
+            raise DatabaseError("Label name cannot be empty", "EMPTY_LABEL")
+
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                # Try to insert the new label
+                cursor.execute("""
+                    INSERT OR IGNORE INTO labels (name, color)
+                    VALUES (?, ?)
+                """, (name, color))
+                
+                # Get the label_id (whether just inserted or already existed)
+                cursor.execute("SELECT id FROM labels WHERE name = ?", (name,))
+                result = cursor.fetchone()
+                
+                if result:
+                    label_id = result[0]
+                    log.info("Label operation successful. Label ID: %d", label_id)
+                    return label_id
+                else:
+                    raise DatabaseError("Failed to create or retrieve label", "DB_QUERY_ERROR")
+                    
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error adding label: %s", e)
+            raise DatabaseError("An error occurred while adding the label", "DB_QUERY_ERROR") from e
+    
+    def get_label(self, label_id):
+        """
+        Retrieves a label from the database by its ID.
+
+        Args:
+            label_id (int): The ID of the label to retrieve.
+
+        Returns:
+            tuple: A tuple containing the label's column values.
+
+        Raises:
+            DatabaseError: If the label with the specified ID is not found or database error occurs.
+        """
+        query = 'SELECT * FROM labels WHERE id = ?'
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (label_id,))
+
+                label = cursor.fetchone()
+                if label is None:
+                    raise DatabaseError(f"Label with ID {label_id} is not found", "LABEL_NOT_FOUND")
+                return label
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def delete_label(self, label_id):
         """
