@@ -111,9 +111,10 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     def get_connection(cls, db_name):
         """Get database connection from pool."""
         if db_name not in cls._connection_pool:
-            cls._connection_pool[db_name] = sqlite3.connect(db_name)
+            conn = sqlite3.connect(db_name)
             # Enable foreign keys
-            cls._connection_pool[db_name].execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA foreign_keys = ON")
+            cls._connection_pool[db_name] = conn
         return cls._connection_pool[db_name]
 
 class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
