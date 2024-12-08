@@ -443,10 +443,14 @@ class TodoDatabase:
         Returns:
             None
         """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM task_labels WHERE label_id = ?', (label_id,))
-            cursor.execute('DELETE FROM labels WHERE id = ?', (label_id,))
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM task_labels WHERE label_id = ?', (label_id,))
+                cursor.execute('DELETE FROM labels WHERE id = ?', (label_id,))
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def clear_task_labels(self, task_id):
         query = "DELETE FROM task_labels WHERE task_id = ?"
