@@ -4,7 +4,13 @@ import logging as log
 from logging.handlers import RotatingFileHandler
 
 log_dir = os.getenv("LOG_DIR", "logs")
-os.makedirs(log_dir, exist_ok=True)
+try:
+    os.makedirs(log_dir, exist_ok=True)
+except PermissionError as e:
+    log.error("Failed to create log directory: %s", e)
+    # Fallback to a user-writable directory
+    log_dir = os.path.join(os.path.expanduser("~"), "logs")
+    os.makedirs(log_dir, exist_ok=True)
 
 handler = RotatingFileHandler(
     os.path.join(log_dir, 'database.log'),
