@@ -448,6 +448,8 @@ class TodoDatabase:
                 cursor = conn.cursor()
                 cursor.execute('DELETE FROM task_labels WHERE label_id = ?', (label_id,))
                 cursor.execute('DELETE FROM labels WHERE id = ?', (label_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No label found with ID {label_id}", "LABEL_NOT_FOUND")
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e

@@ -232,8 +232,9 @@ class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
 
     def test_delete_nonexistent_task(self):
         """Verify that attempting to delete a non-existent task raises an error."""
-        with self.assertRaises(DatabaseError):
+        with self.assertRaises(DatabaseError) as cm:
             self.db.delete_task(9999)
+        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
     
     @patch('sqlite3.connect')
     def test_delete_task_db_connection_error(self, mock_connect):
@@ -539,7 +540,6 @@ class TestTodoDatabaseGetLabel(BaseTodoDatabaseTest):
     
     def setUp(self):
         super().setUp()
-        self.label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
     
     def test_get_label_successful(self):
         """Verify that a label can be successfully retrieved by its ID."""
@@ -556,8 +556,40 @@ class TestTodoDatabaseGetLabel(BaseTodoDatabaseTest):
     
     def test_get_label_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
         with patch('sqlite3.connect') as mock_connect:
             mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
             with self.assertRaises(DatabaseError) as cm:
-                self.db.get_label(self.label_id)
+                self.db.get_label(label_id)
+            self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+class TestTodoDatabaseDeleteLabel(BaseTodoDatabaseTest):
+    """Test suite for delete_label function in TodoDatabase class."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_delete_label.db')
+
+    def setUp(self):
+        super().setUp()
+    
+    def test_delete_label_successful(self):
+        """Verify that a label can be successfully deleted by its ID."""
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        self.db.delete_label(label_id)
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.get_label(label_id)
+        self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
+    
+    def test_delete_nonexistent_label(self):
+        """Verify that attempting to delete a non-existent label raises DatabaseError."""
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.delete_label(9999)
+        self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
+    
+    def test_delete_label_db_connection_error(self):
+        """Verify that a database connection error is handled correctly."""
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.delete_label(label_id)
             self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
