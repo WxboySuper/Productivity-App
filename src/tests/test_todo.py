@@ -37,6 +37,7 @@ class TestTodoList(unittest.TestCase):
         self.mock_db = Mock()
         self.todo_list = TodoList(db=self.mock_db)
 
+    # Add Task Test Suite
     def test_add_task_basic(self):
         """Verify basic task creation with minimal parameters."""
         self.mock_db.add_task.return_value = self.TASK_IDS['BASIC']
@@ -87,12 +88,12 @@ class TestTodoList(unittest.TestCase):
         )
         self.assertEqual(task_id, self.TASK_IDS['PARTIAL'])
 
-    @patch('builtins.print')
-    def test_add_task_success_message(self, mock_print):
-        """Verify success message is printed after task creation."""
+    @patch('logging.info')
+    def test_add_task_success_message(self, mock_log_info):
+        """Verify success message is logged after task creation."""
         self.mock_db.add_task.return_value = self.TASK_IDS['SUCCESS_MSG']
         self.todo_list.add_task(self.BASIC_TASK)
-        mock_print.assert_called_once_with(self.SUCCESS_MESSAGE)
+        mock_log_info.assert_called_once_with("Task '%s' added successfully!", self.BASIC_TASK)
 
     def test_add_task_refresh_called(self):
         """Verify task list is refreshed after adding a task."""

@@ -1,6 +1,58 @@
 import sqlite3
-from datetime import datetime
 import os
+import logging as log
+from logging.handlers import RotatingFileHandler
+
+log_dir = os.getenv("LOG_DIR", "logs")
+try:
+    os.makedirs(log_dir, exist_ok=True)
+except PermissionError as e:
+    log.error("Failed to create log directory: %s", e)
+    # Fallback to a user-writable directory
+    log_dir = os.path.join(os.path.expanduser("~"), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+handler = RotatingFileHandler(
+    os.path.join(log_dir, 'database.log'),
+    maxBytes=int(os.getenv("LOG_MAX_BYTES", str(1024*1024))), # Default 1MB
+    backupCount = int(os.getenv("LOG_BACKUP_COUNT", "5")), # Default 5 backups
+)
+
+log.basicConfig(
+    level=log.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[handler]
+)
+
+
+class DatabaseError(Exception):
+    """Custom exception class for database-related errors.
+    
+    This exception is raised when database operations fail. Each error is
+    associated with a specific error code for better error handling.
+    
+    Error codes:
+    - TASK_NOT_FOUND: When the requested task doesn't exist
+    - INVALID_TITLE: When the task title is None
+    - EMPTY_TITLE: When the task title is empty or whitespace
+    - INVALID_PRIORITY: When the priority value is not in the valid set
+    - DB_CONN_ERROR: When database connection fails
+    - DB_QUERY_ERROR: When query execution fails
+    - NO_UPDATES: When no valid updates are provided
+    - INVALID_VALUE: When a field value has an invalid type
+    
+    Example:
+        try:
+            db.add_task("")
+        except DatabaseError as e:
+            if e.code == "EMPTY_TITLE":
+                print("Task title cannot be empty")
+    """
+    def __init__(self, message, code):
+        super().__init__(message)
+        self.code = code
+
 
 class TodoDatabase:
     """
@@ -17,10 +69,11 @@ class TodoDatabase:
     def __init__(self, db_file="todo.db"):
         """
         Initializes a TodoDatabase instance with the specified database file path.
-
-          Raises:
-              sqlite3.OperationalError: If the database connection fails or if there are permission issues with the database file.
-          """
+        
+        Raises:
+            sqlite3.OperationalError: If database connection fails
+            PermissionError: If no write permission for database directory
+        """
         if db_file is None:
             db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
         db_dir = os.path.dirname(os.path.abspath(db_file))  
@@ -29,85 +82,146 @@ class TodoDatabase:
         if not os.access(db_dir, os.W_OK):  
             raise PermissionError(f"No write permission for database directory: {db_dir}")
         self.db_file = db_file
-        self.conn = sqlite3.connect(self.db_file)
-        self.init_database()
+        # Initialize database but don't keep connection open
+        with sqlite3.connect(self.db_file) as conn:
+            self.init_database(conn)
 
     def __del__(self):
-        """
-        Closes the database connection when the TodoDatabase instance is destroyed.
-
-        This method is called automatically when the TodoDatabase instance is garbage collected or explicitly deleted.
-        It ensures that the database connection is properly closed, even if an exception occurs during the closing process.
+        """Ensures database connection is closed when object is destroyed.
+        
+        Any errors during connection closure are logged but not raised,
+        as this method is called during garbage collection.
         """
         try:
-            self.conn.close()
-        except Exception:
-            pass
+            if hasattr(self, 'conn') and self.conn:
+                self.conn.close()
+        except Exception as e:
+            log.error("Error closing database connection: %s", e)
 
-    def init_database(self):
+    @staticmethod
+    def init_database(conn):
+        """Initialize database tables if they don't exist."""
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                completed BOOLEAN DEFAULT FALSE,
+                deadline DATETIME,
+                category TEXT,
+                notes TEXT,
+                priority INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS labels (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                color TEXT
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS task_labels (
+                task_id INTEGER,
+                label_id INTEGER,
+                FOREIGN KEY (task_id) REFERENCES tasks (id),
+                FOREIGN KEY (label_id) REFERENCES labels (id),
+                PRIMARY KEY (task_id, label_id)
+            )
+        ''')
+        cursor.close()
+
+    @staticmethod
+    def _validate_priority(priority):
+        """Validates the priority value."""
+        VALID_PRIORITIES = {
+            'ASAP': 0,    # Highest priority
+            'HIGH': 1,    # High priority
+            'MEDIUM': 2,  # Medium priority
+            'LOW': 3,     # Low priority
+            'LOWEST': 4   # Lowest priority
+        }
+        if priority is not None and priority not in VALID_PRIORITIES:
+            raise DatabaseError("Invalid priority value", "INVALID_PRIORITY")
+        return VALID_PRIORITIES.get(priority)
+
+    @staticmethod
+    def _validate_title(title):
+        """Validates the task title."""
+        if title is None:
+            raise DatabaseError("Title cannot be empty", "INVALID_TITLE")
+        elif title.strip() == "":
+            raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
+
+    def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
         """
-        Initializes the database by creating the necessary tables if they don't already exist.
-
-        This method establishes a connection to the SQLite database file specified in the `self.db_file` attribute. It then creates three tables:
-
-        1. `tasks`: Stores the todo tasks with fields for title, completion status, deadline, category, notes, priority, and creation timestamp.
-        2. `labels`: Stores the labels that can be associated with tasks, with fields for name and color.
-        3. `task_labels`: A junction table that stores the many-to-many relationship between tasks and labels.
-
-        The method uses parameterized SQL queries to create the tables, which helps prevent SQL injection vulnerabilities.
-        If the tables already exist, the method simply skips their creation.
-        """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL,
-                    completed BOOLEAN DEFAULT FALSE,
-                    deadline DATETIME,
-                    category TEXT,
-                    notes TEXT,
-                    priority INTEGER,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS labels (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT UNIQUE NOT NULL,
-                    color TEXT
-                )
-            ''')
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS task_labels (
-                    task_id INTEGER,
-                    label_id INTEGER,
-                    FOREIGN KEY (task_id) REFERENCES tasks (id),
-                    FOREIGN KEY (label_id) REFERENCES labels (id),
-                    PRIMARY KEY (task_id, label_id)
-                )
-            ''')
-            conn.commit()
-    def update_task(self, task_id, **updates):
-        """
-        Updates a task in the database with the provided field updates.
-
-        This method takes a task ID and a dictionary of field updates.
-        It validates the updates against a whitelist of allowed fields and their expected types.
-        It also performs additional validation on the `priority` field to ensure it is one of the allowed values.
-
-        The method constructs a parameterized SQL query to update the task with the validated updates,
-        and executes the query using a database connection.
+        Adds a new task to the database.
 
         Args:
-            task_id (int): The ID of the task to update.
-            **updates (dict): A dictionary of field updates to apply to the task.
-                              Allowed fields are `title`, `completed`, `deadline`, `category`, `notes`, and `priority`.
+            title (str): The title of the task.
+            deadline (str, optional): The deadline of the task.
+            category (str, optional): The category of the task.
+            notes (str, optional): Additional notes for the task.
+            priority (str, optional): The priority of the task.
+
+        Returns:
+            int: The ID of the newly created task.
 
         Raises:
-            None
+            DatabaseError: If there is an error adding the task. Possible error codes:
+                - INVALID_PRIORITY: If the priority value is not in a valid set
+                - INVALID_TITLE: If the title is None.
+                - EMPTY_TITLE: If the title is empty or whitespace.
+                - DB_CONN_ERROR: If there is a database connection error.
+                - DB_QUERY_ERROR: If there is an error execuring the query.
         """
-        # Define strict whitelist of allowed fields and their types
+
+        self._validate_priority(priority)
+        self._validate_title(title)
+
+        query = '''
+            INSERT INTO tasks (title, deadline, category, notes, priority)
+            VALUES (?, ?, ?, ?, ?)
+        '''
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (title, deadline, category, notes, priority))
+                conn.commit()
+                log.info("Task created successfully with ID %d", cursor.lastrowid)
+                return cursor.lastrowid
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error adding task: %s", e)
+            raise DatabaseError("An error occurred while adding the task", "DB_QUERY_ERROR") from e
+
+    def delete_task(self, task_id):
+        """
+        Deletes the task with the specified ID from the database.
+
+        Args:
+            task_id (int): The ID of the task to delete.
+
+        Raises:
+            DatabaseError: If there is an error deleting the task or if the task does not exist.
+        """
+        query = 'DELETE FROM tasks WHERE id = ?'
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+                conn.commit()
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+
+    def _validate_updates(self, updates):
+        """Validates and filters update fields."""
         ALLOWED_UPDATES = {
             'title': str,
             'completed': bool,
@@ -117,80 +231,62 @@ class TodoDatabase:
             'priority': str
         }
 
-        # Validate priority values against allowed options
-        VALID_PRIORITIES = {'ASAP', '1', '2', '3', '4'}
-
-        # Filter and validate updates
         validated_updates = {}
         for field, value in updates.items():
             if field not in ALLOWED_UPDATES:
                 continue
 
-            # Type validation
             if not isinstance(value, ALLOWED_UPDATES[field]):
-                continue
+                raise DatabaseError(f"Invalid value for field {field}", "INVALID_VALUE")
 
-            # Additional validation for priority field
-            if field == 'priority' and value not in VALID_PRIORITIES:
-                continue
+            if field == 'title':
+                self._validate_title(value)
+            elif field == 'priority':
+                self._validate_priority(value)
 
             validated_updates[field] = value
+        
+        return validated_updates
 
-        if not validated_updates:
-            return
-
-        # Use static query structure with parameterized values
-        # skipcq: BAN-B608
-        query = '''UPDATE tasks SET ''' + ', '.join(f'{field} = ?' for field in ALLOWED_UPDATES if field in validated_updates) + ''' WHERE id = ?'''
-
-        # Create values tuple with only the values, in the same order as the query
-        values = tuple(validated_updates[field] for field in ALLOWED_UPDATES if field in validated_updates) + (task_id,)
-
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, values)
-
-    def get_task_labels(self, task_id):
+    def update_task(self, task_id, **updates):
         """
-        Retrieves all labels associated with the specified task.
+        Updates a task in the database with the provided field updates.
 
         Args:
-            task_id (int): The ID of the task to retrieve labels for.
+            task_id (int): The ID of the task to update.
+            **updates (dict): A dictionary of field updates to apply to the task.
+                              Allowed fields are `title`, `completed`, `deadline`, `category`, `notes`, and `priority`.
 
-        Returns:
-            list: A list of tuples, where each tuple represents a label associated with the task.
-                  The tuple contains the label's ID, name, and color.
+        Raises:
+            DatabaseError: If there is an error updating the task.
         """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT l.* FROM labels l
-                JOIN task_labels tl ON l.id = tl.label_id
-                WHERE tl.task_id = ?
-            ''', (task_id,))
-            return cursor.fetchall()
 
-    def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
-        """
-        Adds a new task to the database.
-        """
-        if not title or len(title.strip()) == 0:
-            raise sqlite3.IntegrityError("Title cannot be empty")
-        
-        if priority is not None and (not isinstance(priority, (int, str)) or int(priority) < 0):
-            raise sqlite3.IntegrityError("Priority must be a non-negative integer")
-        
-        with sqlite3.connect(self.db_file) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            
-            # Store deadline as string in SQLite
-            if isinstance(deadline, datetime):
-                deadline = deadline.strftime('%Y-%m-%d %H:%M:%S')
-            
-            query = "INSERT INTO tasks (title, deadline, category, notes, priority) VALUES (?, ?, ?, ?, ?)"
-            cursor.execute(query, (title, deadline, category, notes, priority))
-            return cursor.lastrowid
+        if not updates:
+            raise DatabaseError("No updates provided", "NO_UPDATES")
+
+        validated_updates = self._validate_updates(updates)
+
+        if not validated_updates:
+            raise DatabaseError("No valid updates provided", "NO_UPDATES")
+
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                set_clause = ', '.join(f"{field} = ?" for field in validated_updates)
+                #skipcq: BAN-B608
+                query = f'UPDATE tasks SET {set_clause} WHERE id = ?'
+                values = list(validated_updates.values()) + [task_id]
+                cursor.execute(query, values)
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+                conn.commit()
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error updating task: %s", e)
+            raise DatabaseError("An error occurred while updating the task", "DB_QUERY_ERROR") from e
+
     def mark_completed(self, task_id):
         """
         Marks the task with the specified ID as completed in the database.
@@ -198,41 +294,19 @@ class TodoDatabase:
         Args:
             task_id (int): The ID of the task to mark as completed.
 
-        Returns:
-            None
+        Raises:
+            DatabaseError: If task not found or database error codes.
         """
         query = 'UPDATE tasks SET completed = TRUE WHERE id = ?'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
-
-    def delete_task(self, task_id):
-        """
-        Deletes the task with the specified ID from the database.
-
-        Args:
-            task_id (int): The ID of the task to delete.
-
-        Returns:
-            None
-        """
-        query = 'DELETE FROM tasks WHERE id = ?'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
-
-    def get_all_tasks(self):
-        """
-        Returns all tasks from the database, ordered by creation date in descending order.
-
-        Returns:
-            list: A list of tuples, where each tuple represents a task and contains the task's column values.
-        """
-        query = 'SELECT * FROM tasks ORDER BY created_at DESC'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query)
-            return cursor.fetchall()
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def get_task(self, task_id):
         """
@@ -242,13 +316,122 @@ class TodoDatabase:
             task_id (int): The ID of the task to retrieve.
 
         Returns:
-            tuple: A tuple containing the task's column values, or None if the task is not found.
+            tuple: A tuple containing the task's column values.
+
+        Raises:
+            DatabaseError: If the task with the specified ID is not found or database error occurs.
         """
         query = 'SELECT * FROM tasks WHERE id = ?'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
-            return cursor.fetchone()
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+        
+                task = cursor.fetchone()
+                if task is None:
+                    raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
+                
+                task_list = list(task)
+                task_list[2] = bool(task_list[2])
+                return tuple(task_list)
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+
+    def get_all_tasks(self):
+        """
+        Returns all tasks from the database, ordered by creation date in descending order.
+
+        Returns:
+            list: A list of tuples, where each tuple represents a task and contains the task's column values.
+        """
+        query = 'SELECT * FROM tasks ORDER BY created_at DESC'
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query)
+                return cursor.fetchall()
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+
+    def add_label(self, name, color=None):
+        """
+        Adds a new label to the database or returns existing label ID.
+
+        Args:
+            name (str): The name of the label
+            color (str, optional): The color code for the label
+
+        Returns:
+            int: The ID of the created or existing label
+
+        Raises:
+            DatabaseError: If there is an error adding the label. Possible error codes:
+                - INVALID_LABEL: If the label name is None
+                - EMPTY_LABEL: If the label name is empty or whitespace
+                - DB_CONN_ERROR: If database connection fails
+                - DB_QUERY_ERROR: If query execution fails
+        """
+        # Validate label name
+        if name is None:
+            raise DatabaseError("Label name cannot be None", "INVALID_LABEL")
+        if name.strip() == "":
+            raise DatabaseError("Label name cannot be empty", "EMPTY_LABEL")
+
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                # Try to insert the new label
+                cursor.execute("""
+                    INSERT OR IGNORE INTO labels (name, color)
+                    VALUES (?, ?)
+                """, (name, color))
+                
+                # Get the label_id (whether just inserted or already existed)
+                cursor.execute("SELECT id FROM labels WHERE name = ?", (name,))
+                result = cursor.fetchone()
+                
+                if result:
+                    label_id = result[0]
+                    log.info("Label operation successful. Label ID: %d", label_id)
+                    return label_id
+                else:
+                    raise DatabaseError("Failed to create or retrieve label", "DB_QUERY_ERROR")
+                    
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            log.error("Error adding label: %s", e)
+            raise DatabaseError("An error occurred while adding the label", "DB_QUERY_ERROR") from e
+    
+    def get_label(self, label_id):
+        """
+        Retrieves a label from the database by its ID.
+
+        Args:
+            label_id (int): The ID of the label to retrieve.
+
+        Returns:
+            tuple: A tuple containing the label's column values.
+
+        Raises:
+            DatabaseError: If the label with the specified ID is not found or database error occurs.
+        """
+        query = 'SELECT * FROM labels WHERE id = ?'
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (label_id,))
+
+                label = cursor.fetchone()
+                if label is None:
+                    raise DatabaseError(f"Label with ID {label_id} is not found", "LABEL_NOT_FOUND")
+                return label
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def delete_label(self, label_id):
         """
@@ -260,10 +443,68 @@ class TodoDatabase:
         Returns:
             None
         """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM task_labels WHERE label_id = ?', (label_id,))
-            cursor.execute('DELETE FROM labels WHERE id = ?', (label_id,))
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM task_labels WHERE label_id = ?', (label_id,))
+                cursor.execute('DELETE FROM labels WHERE id = ?', (label_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No label found with ID {label_id}", "LABEL_NOT_FOUND")
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+
+    def clear_task_labels(self, task_id):
+        query = "DELETE FROM task_labels WHERE task_id = ?"
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+    
+    def get_task_labels(self, task_id):
+        """
+        Retrieves all labels associated with the specified task.
+
+        Args:
+            task_id (int): The ID of the task to retrieve labels for.
+
+        Returns:
+            list: A list of tuples, where each tuple represents a label associated with the task.
+                Each tuple contains (id, name, color).
+
+        Raises:
+            DatabaseError: If database connection fails or task not found.
+                Error codes:
+                - DB_CONN_ERROR: Database connection error
+                - TASK_NOT_FOUND: No task found with given ID
+        """
+        query = '''
+            SELECT l.* FROM labels l
+            JOIN task_labels tl ON l.id = tl.label_id
+            WHERE tl.task_id = ?
+        '''
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                # First check if task exists
+                cursor.execute('SELECT id FROM tasks WHERE id = ?', (task_id,))
+                if cursor.fetchone() is None:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+                    
+                # Get the labels
+                cursor.execute(query, (task_id,))
+                return cursor.fetchall()
+                
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def get_all_labels(self):
         """
@@ -273,10 +514,15 @@ class TodoDatabase:
             list: A list of tuples, where each tuple represents a label and contains the label's ID, name, and color.
         """
         query = 'SELECT * FROM labels'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query)
-            return cursor.fetchall()
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query)
+                return cursor.fetchall()
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def link_task_label(self, task_id, label_id):
         """
@@ -290,28 +536,24 @@ class TodoDatabase:
             None
         """
         query = 'INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id, label_id))
-    
-    def clear_task_labels(self, task_id):
-        query = "DELETE FROM task_labels WHERE task_id = ?"
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute(query, (task_id,))
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
 
-    def add_label(self, name, color=None):
-        query = """
-        INSERT OR IGNORE INTO labels (name, color)
-        VALUES (?, ?)
-        """
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute(query, (name, color))
-            
-        # Get the label_id (whether it was just inserted or already existed)
-        query = "SELECT id FROM labels WHERE name = ?"
-        cursor = self.conn.cursor()
-        cursor.execute(query, (name,))
-        return cursor.fetchone()[0]
+                # Check if task exists
+                task = self.get_task(task_id)
+                if task is None:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
 
+                # Check if label exists
+                label = self.get_label(label_id)
+                if label is None:
+                    raise DatabaseError(f"No label found with ID {label_id}", "LABEL_NOT_FOUND")
+
+                cursor.execute(query, (task_id, label_id))
+                if cursor.rowcount == 0:
+                    raise DatabaseError("Failed to link task to label", "LINK_FAILED")
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
