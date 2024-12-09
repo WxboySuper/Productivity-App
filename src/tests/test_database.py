@@ -662,3 +662,26 @@ class TestTodoDatabaseGetTaskLabels(BaseTodoDatabaseTest):
             with self.assertRaises(DatabaseError) as cm:
                 self.db.get_task_labels(task_id)
             self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+class TestTodoDatabaseGetAllLabels(BaseTodoDatabaseTest):
+    """Test suite for get_all_labels function in TodoDatabase class."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get_all_labels.db')
+
+    def setUp(self):
+        super().setUp()
+    
+    def test_get_all_labels_successful(self):
+        """Verify that all labels can be successfully retrieved."""
+        self.db.add_label(self.BASIC_LABEL_TITLE)
+        self.db.add_label('test label 2')
+        labels = self.db.get_all_labels()
+        self.assertEqual(len(labels), 2)
+    
+    def test_get_all_labels_db_connection_error(self):
+        """Verify that a database connection error is handled correctly."""
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.get_all_labels()
+            self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
