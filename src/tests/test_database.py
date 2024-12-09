@@ -630,3 +630,35 @@ class TestTodoDatabaseClearTaskLabels(BaseTodoDatabaseTest):
             with self.assertRaises(DatabaseError) as cm:
                 self.db.clear_task_labels(task_id)
             self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+class TestTodoDatabaseGetTaskLabels(BaseTodoDatabaseTest):
+    """Test suite for get_task_labels function in TodoDatabase class."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get_task_labels.db')
+
+    def setUp(self):
+        super().setUp()
+    
+    def test_get_task_labels_successful(self):
+        """Verify that labels can be successfully retrieved for a task by its ID."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        self.db.link_task_label(task_id, label_id)
+        labels = self.db.get_task_labels(task_id)
+        self.assertEqual(len(labels), 1)
+        self.assertEqual(labels[0][1], self.BASIC_LABEL_TITLE)
+    
+    def test_get_task_labels_nonexistent_task(self):
+        """Verify that attempting to retrieve labels for a non-existent task raises DatabaseError."""
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.get_task_labels(9999)
+        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
+    
+    def test_get_task_labels_db_connection_error(self):
+        """Verify that a database connection error is handled correctly."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.get_task_labels(task_id)
+            self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
