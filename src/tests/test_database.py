@@ -685,3 +685,55 @@ class TestTodoDatabaseGetAllLabels(BaseTodoDatabaseTest):
             with self.assertRaises(DatabaseError) as cm:
                 self.db.get_all_labels()
             self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
+    """Test suite for link_task_label function in TodoDatabase class."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_link_task_label.db')
+
+    def setUp(self):
+        super().setUp()
+    
+    def test_link_task_label_successful(self):
+        """Verify that a task and label can be successfully linked."""
+        # Create test data
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        
+        # Link task and label
+        self.db.link_task_label(task_id, label_id)
+        
+        # Get linked labels
+        labels = self.db.get_task_labels(task_id)
+        
+        # Verify results
+        self.assertEqual(len(labels), 1, "Expected exactly one label")
+        label = labels[0]  # Label format is (id, name, color)
+        self.assertEqual(label[0], label_id, "Label ID should match")
+        self.assertEqual(label[1], self.BASIC_LABEL_TITLE, "Label name should match")
+    
+    def test_link_task_label_nonexistent_task(self):
+        """Verify that attempting to link a task and label with a non-existent task raises DatabaseError."""
+        task_id = 9999
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.link_task_label(task_id, label_id)
+        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
+
+    def test_link_task_label_nonexistent_label(self):
+        """Verify that attempting to link a task and label with a non-existent label raises DatabaseError."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        label_id = 9999
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.link_task_label(task_id, label_id)
+        self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
+    
+    def test_link_task_label_db_connection_error(self):
+        """Verify that a database connection error is handled correctly."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.link_task_label(task_id, label_id)
+            self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
