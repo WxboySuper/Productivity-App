@@ -476,16 +476,35 @@ class TodoDatabase:
 
         Returns:
             list: A list of tuples, where each tuple represents a label associated with the task.
-                  The tuple contains the label's ID, name, and color.
+                Each tuple contains (id, name, color).
+
+        Raises:
+            DatabaseError: If database connection fails or task not found.
+                Error codes:
+                - DB_CONN_ERROR: Database connection error
+                - TASK_NOT_FOUND: No task found with given ID
         """
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT l.* FROM labels l
-                JOIN task_labels tl ON l.id = tl.label_id
-                WHERE tl.task_id = ?
-            ''', (task_id,))
-            return cursor.fetchall()
+        query = '''
+            SELECT l.* FROM labels l
+            JOIN task_labels tl ON l.id = tl.label_id
+            WHERE tl.task_id = ?
+        '''
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                # First check if task exists
+                cursor.execute('SELECT id FROM tasks WHERE id = ?', (task_id,))
+                if cursor.fetchone() is None:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+                    
+                # Get the labels
+                cursor.execute(query, (task_id,))
+                return cursor.fetchall()
+                
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def get_all_labels(self):
         """
