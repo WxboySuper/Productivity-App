@@ -456,10 +456,17 @@ class TodoDatabase:
 
     def clear_task_labels(self, task_id):
         query = "DELETE FROM task_labels WHERE task_id = ?"
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id,))
-
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (task_id,))
+                if cursor.rowcount == 0:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+    
     def get_task_labels(self, task_id):
         """
         Retrieves all labels associated with the specified task.
