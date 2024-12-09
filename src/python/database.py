@@ -536,6 +536,24 @@ class TodoDatabase:
             None
         """
         query = 'INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)'
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, (task_id, label_id))
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+
+                # Check if task exists
+                task = self.get_task(task_id)
+                if task is None:
+                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+
+                # Check if label exists
+                label = self.get_label(label_id)
+                if label is None:
+                    raise DatabaseError(f"No label found with ID {label_id}", "LABEL_NOT_FOUND")
+
+                cursor.execute(query, (task_id, label_id))
+                if cursor.rowcount == 0:
+                    raise DatabaseError("Failed to link task to label", "LINK_FAILED")
+        except sqlite3.OperationalError as e:
+            log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
