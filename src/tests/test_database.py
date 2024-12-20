@@ -5,6 +5,7 @@ from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
 import os
 import time
+import warnings  # Add warnings module
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
@@ -40,7 +41,6 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         5: 'priority'
     }
 
-
     # Invalid data
     INVALID_PRIORITY = '-1'
 
@@ -53,34 +53,20 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         os.makedirs(cls.TEST_DB_DIR, exist_ok=True)
 
     def setUp(self):
-        """Initialize clean database before each test."""
-        # Force close any existing connections
-        if hasattr(self, 'db'):
-            self.db.__del__()
-            del self.db
-
-        # Clear connection pool
-        if self.TEST_DB_NAME in self._connection_pool:
-            try:
-                self._connection_pool[self.TEST_DB_NAME].close()
-            except Exception:
-                pass
-            del self._connection_pool[self.TEST_DB_NAME]
-
-        # Ensure database file is removed
+        """Set up test environment."""
+        self.recorded_warnings = []
+        self.warning_context = warnings.catch_warnings(record=True)
+        self.warning_context.__enter__()
+        warnings.simplefilter("always")
         self._remove_db_file()
-            
-        # Create fresh database
         self.db = TodoDatabase(self.TEST_DB_NAME)
 
     def tearDown(self):
         """Clean up after each test."""
-        # Close database connection
         if hasattr(self, 'db'):
-            self.db.__del__()
+            self.db.__del__()  # This might generate a resource warning
             del self.db
 
-        # Clear connection pool
         if self.TEST_DB_NAME in self._connection_pool:
             try:
                 self._connection_pool[self.TEST_DB_NAME].close()
@@ -88,8 +74,18 @@ class BaseTodoDatabaseTest(unittest.TestCase):
                 pass
             del self._connection_pool[self.TEST_DB_NAME]
 
-        # Remove database file
         self._remove_db_file()
+        
+        # Get the recorded warnings before exiting context
+        self.warning_context.__exit__(None, None, None)
+        
+        # Now safely process the recorded warnings
+        if self.recorded_warnings:
+            for warning in self.recorded_warnings:
+                print(f"Warning message: {warning.message}")
+                print(f"Warning category: {warning.category}")
+                print(f"Warning filename: {warning.filename}")
+                print(f"Warning lineno: {warning.lineno}")
 
     def _remove_db_file(self):
         """Helper to safely remove database file."""
