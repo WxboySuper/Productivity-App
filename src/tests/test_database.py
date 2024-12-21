@@ -58,7 +58,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         Set up test environment.
         
         Initializes the test environment and sets up warning capture
-        to record and track all warnings aduring test execution.
+        to record and track all warnings during test execution.
         """
         self.recorded_warnings = []
         self.warning_context = warnings.catch_warnings(record=True)
@@ -77,7 +77,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
             category: The warning category (e.g., DeprecationWarning)
             filename: The file where the warning occured
             lineno: The line number where the warning occured
-            *args: Additional positional arguements from the warning
+            *args: Additional positional arguments from the warning
             **kwards: Additional keyword arguments from the warning
         """
         self.recorded_warnings.append(warnings.WarningMessage(
