@@ -27,6 +27,13 @@ class BaseTodoListTest(unittest.TestCase):
         'priority': 2
     }
 
+    FULL_TASK_DATA = {
+        'title': "Complete project",
+        'category': "Work",
+        'notes': "Important project",
+        'priority': 1
+    }
+
     SUCCESS_MESSAGE = "Task 'Test task' added successfully!"
 
     TEST_DB_DIR = os.path.join(os.path.dirname(__file__), 'todo_test_databases')
@@ -70,7 +77,7 @@ class BaseTodoListTest(unittest.TestCase):
 class TestTodoListRefreshTasks(BaseTodoListTest):
     """Test suite for refresh_tasks method of TodoList class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoListTest.TEST_DB_DIR, 'test.db')
+    TEST_DB_NAME = os.path.join(BaseTodoListTest.TEST_DB_DIR, 'test_todo_refresh.db')
 
     def setUp(self):
         super().setUp()
@@ -171,40 +178,14 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
         self.todo_list.refresh_tasks()
         self.assertEqual(len(self.todo_list.tasks), 0)
 
-class TestTodoList(unittest.TestCase):
-    """Test suite for TodoList class functionality."""
+class TestTodoListAddTask(BaseTodoListTest):
+    """Test suite for add_task method of TodoList class."""
 
-    # Test data constants
-    BASIC_TASK = "Test task"
-    TASK_IDS = {
-        'BASIC': 1,
-        'FULL': 2,
-        'PARTIAL': 3,
-        'SUCCESS_MSG': 4,
-        'REFRESH': 5
-    }
-
-    FULL_TASK_DATA = {
-        'title': "Complete project",
-        'category': "Work",
-        'notes': "Important project",
-        'priority': 1
-    }
-
-    PARTIAL_TASK_DATA = {
-        'title': "Buy groceries",
-        'category': "Personal",
-        'priority': 2
-    }
-
-    SUCCESS_MESSAGE = "Task 'Test task' added successfully!"
+    TEST_DB_NAME = os.path.join(BaseTodoListTest.TEST_DB_DIR, 'test_todo_add.db')
 
     def setUp(self):
-        """Initialize TodoList with mock database."""
-        self.mock_db = Mock()
-        self.todo_list = TodoList(db=self.mock_db)
+        super().setUp()
 
-    # Add Task Test Suite
     def test_add_task_basic(self):
         """Verify basic task creation with minimal parameters."""
         self.mock_db.add_task.return_value = self.TASK_IDS['BASIC']
@@ -275,3 +256,34 @@ class TestTodoList(unittest.TestCase):
         self.todo_list.refresh_tasks = Mock()
         self.todo_list.add_task(self.BASIC_TASK)
         self.todo_list.refresh_tasks.assert_called_once()
+    
+    def test_add_task_database_error(self):
+        """Verify database error handling during task addition."""
+        self.mock_db.add_task.side_effect = DatabaseError("Database error", code=1)
+        
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.add_task(self.BASIC_TASK)
+            
+            self.assertIn("Database error", str(context.exception))
+            mock_log_error.assert_called_once()
+
+    def test_add_task_timeout_error(self):
+        """Verify timeout error handling during task addition."""
+        self.mock_db.add_task.side_effect = TimeoutError("Connection timeout")
+
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.add_task(self.BASIC_TASK)
+
+            self.assertIn("Connection timeout", str(context.exception))
+            mock_log_error.assert_called_once()
+
+    def test_add_task_invalid_input(self):
+        """Verify invalid input handling."""
+        invalid_inputs = [None, "", 123, [], {}]
+        
+        for invalid_input in invalid_inputs:
+            with self.assertRaises(ValueError) as context:
+                self.todo_list.add_task(invalid_input)
+            self.assertIn("Task must be a non-empty string", str(context.exception))
