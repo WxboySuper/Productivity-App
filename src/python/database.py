@@ -394,7 +394,9 @@ class TodoDatabase:
                     label_id = result[0]
                     log.info("Label operation successful. Label ID: %d", label_id)
                     return label_id
-                raise DatabaseError("Failed to create or retrieve label", "DB_QUERY_ERROR")
+                raise DatabaseError(
+                    "Failed to create or retrieve label", "DB_QUERY_ERROR"
+                    )
 
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
