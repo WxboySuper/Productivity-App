@@ -42,7 +42,13 @@ class TodoList:
 
     def refresh_tasks(self):
         """Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute."""
-        self.tasks = self.db.get_all_tasks()
+        try:
+            self.tasks = self.db.get_all_tasks()
+            log.info("Tasks refreshed successfully")
+        except Exception as e:
+            log.error("Failed to refresh tasks: %s", str(e))
+            self.tasks = []  # Reset to empty list on error
+            raise RuntimeError(f"Failed to refresh tasks: {str(e)}") from e
 
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
         """
