@@ -51,7 +51,7 @@ class TodoList:
             self.tasks = self.db.get_all_tasks()
             log.info("Tasks refreshed successfully")
         except TimeoutError as e:
-            log.error(f"Timeout while refreshing tasks: {e}")
+            log.error("Timeout while refreshing tasks: %s", str(e))
             self.tasks = []
             raise RuntimeError(f"Commection timeout: {e}")
         except (DatabaseError) as e:
