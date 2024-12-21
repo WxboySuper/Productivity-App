@@ -151,7 +151,7 @@ class TodoDatabase:
         """Validates the task title."""
         if title is None:
             raise DatabaseError("Title cannot be empty", "INVALID_TITLE")
-        elif title.strip() == "":
+        if title.strip() == "":
             raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
 
     def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
