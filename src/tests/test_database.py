@@ -59,18 +59,21 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         self.warning_context = warnings.catch_warnings(record=True)
         self.warning_context.__enter__()
         warnings.simplefilter("always")
-        warnings.showwarning = lambda message, category, filename, lineno, *args, **kwargs: \
-            self.recorded_warnings.append(warnings.WarningMessage(
-                message=str(message),
-                category=category,
-                filename=filename,
-                lineno=lineno,
-                line=None,
-                file=None,
-                source=None
-            ))
+        warnings.showwarning = self._record_warning
         self._remove_db_file()
         self.db = TodoDatabase(self.TEST_DB_NAME)
+
+    def _record_warning(self, message, category, filename, lineno, *args, **kwards):
+        """Record a warning message."""
+        self.recorded_warnings.append(warnings.WarningMessage(
+            message=str(message),
+            category=category,
+            filename=filename,
+            lineno=lineno,
+            line=None,
+            file=None,
+            source=None
+        ))
 
     def tearDown(self):
         """Clean up after each test."""
@@ -78,7 +81,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         self.warning_context.__exit__(None, None, None)
         if self.recorded_warnings:
             for warning in self.recorded_warnings:
-                print(f"WARNING: {warning.category.__name__}: {warning.message}"
+                print(f"WARNING: {warning.category.__name__}: {warning.message} "
                       f"at {warning.filename}:{warning.lineno}")
                 
         if hasattr(self, 'db'):
