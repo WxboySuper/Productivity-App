@@ -1,4 +1,4 @@
-from src.python.database import TodoDatabase
+from src.python.database import TodoDatabase, DatabaseError
 import logging as log
 import os
 
@@ -41,11 +41,16 @@ class TodoList:
         self.tasks = []
 
     def refresh_tasks(self):
-        """Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute."""
+        """
+        Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute.
+        
+        Raises:
+            RuntimeError: If an error occurs while retrieving tasks from the database
+        """
         try:
             self.tasks = self.db.get_all_tasks()
             log.info("Tasks refreshed successfully")
-        except Exception as e:
+        except (DatabaseError, ConnectionError) as e:
             log.error("Failed to refresh tasks: %s", str(e))
             self.tasks = []  # Reset to empty list on error
             raise RuntimeError(f"Failed to refresh tasks: {str(e)}") from e
