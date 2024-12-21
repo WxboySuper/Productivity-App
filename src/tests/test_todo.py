@@ -29,6 +29,10 @@ class BaseTodoListTest(unittest.TestCase):
     
     TEST_DB_DIR = os.path.join(os.path.dirname(__file__), 'todo_test_databases')
     
+    TEST_LOG_DIR = os.path.join(os.path.dirname(__file__), 'logs')
+    
+    LOG_PATH = os.path.join(TEST_LOG_DIR, 'todo_test.log')
+    
     @classmethod
     def setUpClass(cls):
         """Create todo test directory."""
@@ -41,7 +45,7 @@ class BaseTodoListTest(unittest.TestCase):
         self.todo_list = TodoList(db=self.mock_db)
         
         # Clear logs
-        log_path = "logs/todo.log"
+        log_path = self.LOG_PATH
         try:
             os.makedirs(os.path.dirname(log_path), exist_ok=True)
             open(log_path, 'w').close()
@@ -51,9 +55,12 @@ class BaseTodoListTest(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         if os.path.exists(self.TEST_DB_DIR):
-            for file in os.listdir(self.TEST_DB_DIR):
-                os.remove(os.path.join(self.TEST_DB_DIR, file))
-            os.rmdir(self.TEST_DB_DIR)
+            try:
+                for file in os.listdir(self.TEST_DB_DIR):
+                    os.remove(os.path.join(self.TEST_DB_DIR, file))
+                os.rmdir(self.TEST_DB_DIR)
+            except OSError as e:
+                print(f"Error removing test database directory: {str(e)}")
 
 class TestTodoListRefreshTasks(BaseTodoListTest):
     """Test suite for refresh_tasks method of TodoList class."""
