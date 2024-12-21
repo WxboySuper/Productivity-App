@@ -5,6 +5,8 @@ from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
 import os
 import time
+import warnings
+from contextlib import suppress
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
@@ -40,7 +42,6 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         5: 'priority'
     }
 
-
     # Invalid data
     INVALID_PRIORITY = '-1'
 
@@ -53,42 +54,60 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         os.makedirs(cls.TEST_DB_DIR, exist_ok=True)
 
     def setUp(self):
-        """Initialize clean database before each test."""
-        # Force close any existing connections
-        if hasattr(self, 'db'):
-            self.db.__del__()
-            del self.db
-
-        # Clear connection pool
-        if self.TEST_DB_NAME in self._connection_pool:
-            try:
-                self._connection_pool[self.TEST_DB_NAME].close()
-            except Exception:
-                pass
-            del self._connection_pool[self.TEST_DB_NAME]
-
-        # Ensure database file is removed
+        """
+        Set up test environment.
+        
+        Initializes the test environment and sets up warning capture
+        to record and track all warnings during test execution.
+        """
+        self.recorded_warnings = []
+        self.warning_context = warnings.catch_warnings(record=True)
+        self.warning_context.__enter__()
+        warnings.simplefilter("always")
+        warnings.showwarning = self._record_warning
         self._remove_db_file()
-            
-        # Create fresh database
         self.db = TodoDatabase(self.TEST_DB_NAME)
+
+    def _record_warning(self, message, category, filename, lineno, *args, **kwards):
+        """
+        Record a warning message.
+        
+        Args:
+            message: The warning message
+            category: The warning category (e.g., DeprecationWarning)
+            filename: The file where the warning occured
+            lineno: The line number where the warning occured
+            *args: Additional positional arguments from the warning
+            **kwards: Additional keyword arguments from the warning
+        """
+        self.recorded_warnings.append(warnings.WarningMessage(
+            message=str(message),
+            category=category,
+            filename=filename,
+            lineno=lineno,
+            line=None,
+            file=None,
+            source=None
+        ))
 
     def tearDown(self):
         """Clean up after each test."""
-        # Close database connection
+        # Process warnings before cleanup
+        self.warning_context.__exit__(None, None, None)
+        if self.recorded_warnings:
+            for warning in self.recorded_warnings:
+                print(f"WARNING: {warning.category.__name__}: {warning.message} "
+                      f"at {warning.filename}:{warning.lineno}")
+                
         if hasattr(self, 'db'):
-            self.db.__del__()
+            self.db.__del__()  # This might generate a resource warning
             del self.db
 
-        # Clear connection pool
         if self.TEST_DB_NAME in self._connection_pool:
-            try:
+            with suppress(Exception):
                 self._connection_pool[self.TEST_DB_NAME].close()
-            except Exception:
-                pass
             del self._connection_pool[self.TEST_DB_NAME]
 
-        # Remove database file
         self._remove_db_file()
 
     def _remove_db_file(self):
