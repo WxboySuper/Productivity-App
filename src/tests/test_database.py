@@ -5,7 +5,8 @@ from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
 import os
 import time
-import warnings  # Add warnings module
+import warnings
+from contextlib import suppress
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
@@ -83,10 +84,8 @@ class BaseTodoDatabaseTest(unittest.TestCase):
             del self.db
 
         if self.TEST_DB_NAME in self._connection_pool:
-            try:
+            with suppress(Exception):
                 self._connection_pool[self.TEST_DB_NAME].close()
-            except Exception:
-                pass
             del self._connection_pool[self.TEST_DB_NAME]
 
         self._remove_db_file()
