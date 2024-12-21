@@ -50,10 +50,14 @@ class TodoList:
         try:
             self.tasks = self.db.get_all_tasks()
             log.info("Tasks refreshed successfully")
-        except (DatabaseError, ConnectionError) as e:
+        except TimeoutError as e:
+            log.error(f"Timeout while refreshing tasks: {e}")
+            self.tasks = []
+            raise RuntimeError(f"Commection timeout: {e}")
+        except (DatabaseError) as e:
             log.error("Failed to refresh tasks: %s", str(e))
             self.tasks = []  # Reset to empty list on error
-            raise RuntimeError(f"Failed to refresh tasks: {str(e)}") from e
+            raise RuntimeError(f"Database error: {str(e)}") from e
 
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
         """

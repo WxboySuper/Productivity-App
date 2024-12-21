@@ -3,6 +3,8 @@ import os
 import unittest
 from datetime import datetime
 from unittest.mock import Mock, patch, call
+import logging
+from src.python.database import DatabaseError
 
 #skipcq: PTC-W0046
 class BaseTodoListTest(unittest.TestCase):
@@ -55,12 +57,15 @@ class BaseTodoListTest(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         if os.path.exists(self.TEST_DB_DIR):
-            try:
-                for file in os.listdir(self.TEST_DB_DIR):
+            for file in os.listdir(self.TEST_DB_DIR):
+                try:
                     os.remove(os.path.join(self.TEST_DB_DIR, file))
+                except OSError as e:
+                    self.fail(f"Failed to remove test file {file}: {str(e)}")
+            try:
                 os.rmdir(self.TEST_DB_DIR)
             except OSError as e:
-                print(f"Error removing test database directory: {str(e)}")
+                self.fail(f"Failed to remove test directory: {str(e)}")
 
 class TestTodoListRefreshTasks(BaseTodoListTest):
     """Test suite for refresh_tasks method of TodoList class."""
@@ -101,27 +106,33 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
         self.assertEqual(self.todo_list.tasks, [])
     
     def test_refresh_tasks_error(self):
-        """Verify that refresh_tasks logs an error and raises an exception if an error occurs during task retrieval."""
-        # Configure mock to raise an exception
-        self.mock_db.get_all_tasks.side_effect = Exception("Database error")
+        """Verify that refresh_tasks handles database errors correctly."""
+        # Configure mock with correct DatabaseError constructor
+        self.mock_db.get_all_tasks.side_effect = DatabaseError("Database error", code=1)
         
-        # Call refresh_tasks
-        with self.assertRaises(RuntimeError):
-            self.todo_list.refresh_tasks()
-        
-        # Verify get_all_tasks was called
-        self.mock_db.get_all_tasks.assert_called_once()
-        
-        # Verify tasks list was reset to empty list
-        self.assertEqual(self.todo_list.tasks, [])
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.refresh_tasks()
+            
+            self.assertIn("Database error", str(context.exception))
+            self.assertEqual(self.todo_list.tasks, [])
+            mock_log_error.assert_called_once()
+            self.mock_db.get_all_tasks.assert_called_once()
     
     def test_refresh_tasks_connection_timeout(self):
-        """Verify refresh_tasks handles database connection timeout."""
+        """Verify refresh_tasks handles connection timeouts correctly."""
+        # Configure mock
         self.mock_db.get_all_tasks.side_effect = TimeoutError("Connection timeout")
-        with self.assertRaises(RuntimeError) as context:
-            self.todo_list.refresh_tasks()
-        self.assertIn("Connection timeout", str(context.exception))
-        self.assertEqual(self.todo_list.tasks, [])
+        
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.refresh_tasks()
+            
+            # Verify error handling - moved outside the assertRaises but inside the patch
+            self.assertIn("Connection timeout", str(context.exception))
+            self.assertEqual(self.todo_list.tasks, [])
+            mock_log_error.assert_called_once()
+            self.mock_db.get_all_tasks.assert_called_once()
     
     def test_refresh_tasks_state_change(self):
         """Verify tasks list state changes correctly during refresh."""
@@ -239,9 +250,11 @@ class TestTodoList(unittest.TestCase):
         )
         self.assertEqual(task_id, self.TASK_IDS['PARTIAL'])
 
-    @patch('logging.info')
-    def test_add_task_success_message(self, mock_log_info):
+    def test_add_task_success_message(self):
         """Verify success message is logged after task creation."""
+        # Reset logging configuration
+        logging.getLogger().handlers = []
+
         with patch('logging.info') as log_info:
             self.todo_list.add_task(self.BASIC_TASK)
             
