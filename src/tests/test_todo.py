@@ -9,10 +9,10 @@ from src.python.database import DatabaseError
 #skipcq: PTC-W0046
 class BaseTodoListTest(unittest.TestCase):
     """Base test class for TodoList test suite."""
-    
+
     # Test data
     BASIC_TASK = "Test task"
-    
+
     TASK_IDS = {
         'BASIC': 1,
         'FULL': 2,
@@ -20,7 +20,7 @@ class BaseTodoListTest(unittest.TestCase):
         'SUCCESS_MSG': 4,
         'REFRESH': 5
     }
-    
+
     PARTIAL_TASK_DATA = {
         'title': "Buy groceries",
         'category': "Personal",
@@ -28,24 +28,24 @@ class BaseTodoListTest(unittest.TestCase):
     }
 
     SUCCESS_MESSAGE = "Task 'Test task' added successfully!"
-    
+
     TEST_DB_DIR = os.path.join(os.path.dirname(__file__), 'todo_test_databases')
-    
+
     TEST_LOG_DIR = os.path.join(os.path.dirname(__file__), 'logs')
-    
+
     LOG_PATH = os.path.join(TEST_LOG_DIR, 'todo_test.log')
-    
+
     @classmethod
     def setUpClass(cls):
         """Create todo test directory."""
         os.makedirs(cls.TEST_DB_DIR, exist_ok=True)
-    
+
     def setUp(self):
         """Set up test environment."""
-        
+
         self.mock_db = Mock()
         self.todo_list = TodoList(db=self.mock_db)
-        
+
         # Clear logs
         log_path = self.LOG_PATH
         try:
@@ -53,7 +53,7 @@ class BaseTodoListTest(unittest.TestCase):
             open(log_path, 'w').close()
         except IOError as e:
             print(f"Error clearing log file: {str(e)}")
-    
+
     def tearDown(self):
         """Clean up test environment."""
         if os.path.exists(self.TEST_DB_DIR):
@@ -69,7 +69,12 @@ class BaseTodoListTest(unittest.TestCase):
 
 class TestTodoListRefreshTasks(BaseTodoListTest):
     """Test suite for refresh_tasks method of TodoList class."""
-    
+
+    TEST_DB_NAME = os.path.join(BaseTodoListTest.TEST_DB_DIR, 'test.db')
+
+    def setUp(self):
+        super().setUp()
+
     def test_refresh_tasks_successful(self):
         """Verify that refresh_tasks successfully updates the tasks list with database data."""
         # Prepare test data
@@ -78,71 +83,71 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
             (2, "Task 2", None, "Work", None, 1),
             (3, "Task 3", None, "Personal", "Important", 2)
         ]
-        
+
         # Configure mock to return test data
         self.mock_db.get_all_tasks.return_value = test_tasks
-        
+
         # Call refresh_tasks
         self.todo_list.refresh_tasks()
-        
+
         # Verify get_all_tasks was called
         self.mock_db.get_all_tasks.assert_called_once()
-        
+
         # Verify tasks list was updated correctly
         self.assertEqual(self.todo_list.tasks, test_tasks)
-    
+
     def test_refresh_tasks_empty(self):
         """Verify that refresh_tasks updates the tasks list with an empty list if no tasks are found in the database."""
         # Configure mock to return an empty list
         self.mock_db.get_all_tasks.return_value = []
-        
+
         # Call refresh_tasks
         self.todo_list.refresh_tasks()
-        
+
         # Verify get_all_tasks was called
         self.mock_db.get_all_tasks.assert_called_once()
-        
+
         # Verify tasks list was updated correctly
         self.assertEqual(self.todo_list.tasks, [])
-    
+
     def test_refresh_tasks_error(self):
         """Verify that refresh_tasks handles database errors correctly."""
         # Configure mock with correct DatabaseError constructor
         self.mock_db.get_all_tasks.side_effect = DatabaseError("Database error", code=1)
-        
+
         with patch('logging.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.refresh_tasks()
-            
+
             self.assertIn("Database error", str(context.exception))
             self.assertEqual(self.todo_list.tasks, [])
             mock_log_error.assert_called_once()
             self.mock_db.get_all_tasks.assert_called_once()
-    
+
     def test_refresh_tasks_connection_timeout(self):
         """Verify refresh_tasks handles connection timeouts correctly."""
         # Configure mock
         self.mock_db.get_all_tasks.side_effect = TimeoutError("Connection timeout")
-        
+
         with patch('logging.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.refresh_tasks()
-            
+
             # Verify error handling - moved outside the assertRaises but inside the patch
             self.assertIn("Connection timeout", str(context.exception))
             self.assertEqual(self.todo_list.tasks, [])
             mock_log_error.assert_called_once()
             self.mock_db.get_all_tasks.assert_called_once()
-    
+
     def test_refresh_tasks_state_change(self):
         """Verify tasks list state changes correctly during refresh."""
         initial_tasks = [(1, "Task 1")]
         new_tasks = [(2, "Task 2")]
-        
+
         # Set initial state
         self.todo_list.tasks = initial_tasks
         self.mock_db.get_all_tasks.return_value = new_tasks
-        
+
         self.todo_list.refresh_tasks()
         self.assertEqual(self.todo_list.tasks, new_tasks)
 
@@ -153,15 +158,15 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
             [(1, "Task 1"), (2, "Task 2")],
             []
         ]
-        
+
         # First refresh
         self.todo_list.refresh_tasks()
         self.assertEqual(len(self.todo_list.tasks), 1)
-        
+
         # Second refresh
         self.todo_list.refresh_tasks()
         self.assertEqual(len(self.todo_list.tasks), 2)
-        
+
         # Third refresh
         self.todo_list.refresh_tasks()
         self.assertEqual(len(self.todo_list.tasks), 0)
@@ -212,7 +217,7 @@ class TestTodoList(unittest.TestCase):
         self.mock_db.add_task.return_value = self.TASK_IDS['FULL']
         deadline = datetime.now()
         task_data = self.FULL_TASK_DATA.copy()
-        
+
         task_id = self.todo_list.add_task(
             task_data['title'],
             deadline=deadline,
@@ -220,7 +225,7 @@ class TestTodoList(unittest.TestCase):
             notes=task_data['notes'],
             priority=task_data['priority']
         )
-        
+
         self.mock_db.add_task.assert_called_once_with(
             task_data['title'],
             deadline,
@@ -234,13 +239,13 @@ class TestTodoList(unittest.TestCase):
         """Verify task creation with partial parameters."""
         self.mock_db.add_task.return_value = self.TASK_IDS['PARTIAL']
         task_data = self.PARTIAL_TASK_DATA
-        
+
         task_id = self.todo_list.add_task(
             task_data['title'],
             category=task_data['category'],
             priority=task_data['priority']
         )
-        
+
         self.mock_db.add_task.assert_called_once_with(
             task_data['title'],
             None,
@@ -257,7 +262,7 @@ class TestTodoList(unittest.TestCase):
 
         with patch('logging.info') as log_info:
             self.todo_list.add_task(self.BASIC_TASK)
-            
+
             expected_calls = [
                 call('Tasks refreshed successfully'),
                 call("Task '%s' added successfully!", self.BASIC_TASK)
