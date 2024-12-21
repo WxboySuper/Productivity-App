@@ -1,8 +1,7 @@
 [run]
 source = .
 omit = 
-  tests/*
-  setup.py
+  /tests/*
 
 [report]
   fail_under = 80
