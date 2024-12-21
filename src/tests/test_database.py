@@ -61,11 +61,13 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         warnings.simplefilter("always")
         warnings.showwarning = lambda message, category, filename, lineno, *args, **kwargs: \
             self.recorded_warnings.append(warnings.WarningMessage(
-                messege=message,
+                message=str(message),
                 category=category,
                 filename=filename,
                 lineno=lineno,
-                line=None
+                line=None,
+                file=None,
+                source=None
             ))
         self._remove_db_file()
         self.db = TodoDatabase(self.TEST_DB_NAME)
