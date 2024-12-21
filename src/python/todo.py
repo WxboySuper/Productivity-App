@@ -1,4 +1,4 @@
-from src.python.database import TodoDatabase
+from src.python.database import TodoDatabase, DatabaseError
 import logging as log
 import os
 
@@ -33,7 +33,7 @@ class TodoList:
     def __init__(self, db=None):
         """
         Initializes the TodoList class with a TodoDatabase instance and an empty list of tasks.
-        
+
         Args:
             db: Optional database instance. If None, creates a new TodoDatabase instance.
         """
@@ -41,8 +41,23 @@ class TodoList:
         self.tasks = []
 
     def refresh_tasks(self):
-        """Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute."""
-        self.tasks = self.db.get_all_tasks()
+        """
+        Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute.
+
+        Raises:
+            RuntimeError: If an error occurs while retrieving tasks from the database
+        """
+        try:
+            self.tasks = self.db.get_all_tasks()
+            log.info("Tasks refreshed successfully")
+        except TimeoutError as e:
+            log.error("Timeout while refreshing tasks: %s", str(e))
+            self.tasks = []
+            raise RuntimeError(f"Commection timeout: {e}") from e
+        except (DatabaseError) as e:
+            log.error("Failed to refresh tasks: %s", str(e))
+            self.tasks = []  # Reset to empty list on error
+            raise RuntimeError(f"Database error: {str(e)}") from e
 
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
         """
@@ -58,10 +73,21 @@ class TodoList:
         Returns:
             int: The ID of the newly added task.
         """
-        task_id = self.db.add_task(task, deadline, category, notes, priority)
-        self.refresh_tasks()
-        log.info("Task '%s' added successfully!", task)
-        return task_id
+        if not task or not isinstance(task, str):
+            log.error("Invalid task parameter: task must be a non-empty string")
+            raise ValueError("Task must be a non-empty string")
+
+        try:
+            task_id = self.db.add_task(task, deadline, category, notes, priority)
+            self.refresh_tasks()
+            log.info("Task '%s' added successfully!", task)
+            return task_id
+        except TimeoutError as e:
+            log.error("Timeout while adding task: %s", str(e))
+            raise RuntimeError(f"Connection timeout: {e}") from e
+        except (DatabaseError) as e:
+            log.error("Database error while adding task: %s", str(e))
+            raise RuntimeError(f"Database error: {str(e)}") from e
 
     def mark_completed(self, task_index):
         """
