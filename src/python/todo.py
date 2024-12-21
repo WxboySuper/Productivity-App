@@ -73,10 +73,21 @@ class TodoList:
         Returns:
             int: The ID of the newly added task.
         """
-        task_id = self.db.add_task(task, deadline, category, notes, priority)
-        self.refresh_tasks()
-        log.info("Task '%s' added successfully!", task)
-        return task_id
+        if not task or not isinstance(task, str):
+            log.error("Invalid task parameter: task must be a non-empty string")
+            raise ValueError("Task must be a non-empty string")
+
+        try:
+            task_id = self.db.add_task(task, deadline, category, notes, priority)
+            self.refresh_tasks()
+            log.info("Task '%s' added successfully!", task)
+            return task_id
+        except TimeoutError as e:
+            log.error("Timeout while adding task: %s", str(e))
+            raise RuntimeError(f"Connection timeout: {e}")
+        except (DatabaseError) as e:
+            log.error("Database error while adding task: %s", str(e))
+            raise RuntimeError(f"Database error: {str(e)}")
 
     def mark_completed(self, task_index):
         """
