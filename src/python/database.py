@@ -150,7 +150,7 @@ class TodoDatabase:
     def _validate_title(title):
         """Validates the task title."""
         if title is None:
-            raise DatabaseError("Title cannot be empty", "INVALID_TITLE")
+            raise DatabaseError("Title cannot be None", "INVALID_TITLE")
         if title.strip() == "":
             raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
 
