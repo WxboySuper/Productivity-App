@@ -15,6 +15,7 @@ test_todo_get_all.db
 /releases
 /dist
 /htmlcov
+coverage.xml
 
 # Python Cachee Folders
 /src/python/__pycache__
