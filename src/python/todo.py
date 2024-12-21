@@ -33,7 +33,7 @@ class TodoList:
     def __init__(self, db=None):
         """
         Initializes the TodoList class with a TodoDatabase instance and an empty list of tasks.
-        
+
         Args:
             db: Optional database instance. If None, creates a new TodoDatabase instance.
         """

@@ -28,10 +28,10 @@ log.basicConfig(
 
 class DatabaseError(Exception):
     """Custom exception class for database-related errors.
-    
+
     This exception is raised when database operations fail. Each error is
     associated with a specific error code for better error handling.
-    
+
     Error codes:
     - TASK_NOT_FOUND: When the requested task doesn't exist
     - INVALID_TITLE: When the task title is None
@@ -41,7 +41,7 @@ class DatabaseError(Exception):
     - DB_QUERY_ERROR: When query execution fails
     - NO_UPDATES: When no valid updates are provided
     - INVALID_VALUE: When a field value has an invalid type
-    
+
     Example:
         try:
             db.add_task("")
@@ -69,7 +69,7 @@ class TodoDatabase:
     def __init__(self, db_file="todo.db"):
         """
         Initializes a TodoDatabase instance with the specified database file path.
-        
+
         Raises:
             sqlite3.OperationalError: If database connection fails
             PermissionError: If no write permission for database directory
@@ -88,7 +88,7 @@ class TodoDatabase:
 
     def __del__(self):
         """Ensures database connection is closed when object is destroyed.
-        
+
         Any errors during connection closure are logged but not raised,
         as this method is called during garbage collection.
         """
@@ -244,7 +244,7 @@ class TodoDatabase:
                 self._validate_priority(value)
 
             validated_updates[field] = value
-        
+
         return validated_updates
 
     def update_task(self, task_id, **updates):
@@ -324,11 +324,11 @@ class TodoDatabase:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 cursor.execute(query, (task_id,))
-        
+
                 task = cursor.fetchone()
                 if task is None:
                     raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
-                
+
                 task_list = list(task)
                 task_list[2] = bool(task_list[2])
                 return tuple(task_list)
@@ -385,25 +385,25 @@ class TodoDatabase:
                     INSERT OR IGNORE INTO labels (name, color)
                     VALUES (?, ?)
                 """, (name, color))
-                
+
                 # Get the label_id (whether just inserted or already existed)
                 cursor.execute("SELECT id FROM labels WHERE name = ?", (name,))
                 result = cursor.fetchone()
-                
+
                 if result:
                     label_id = result[0]
                     log.info("Label operation successful. Label ID: %d", label_id)
                     return label_id
                 else:
                     raise DatabaseError("Failed to create or retrieve label", "DB_QUERY_ERROR")
-                    
+
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
         except sqlite3.Error as e:
             log.error("Error adding label: %s", e)
             raise DatabaseError("An error occurred while adding the label", "DB_QUERY_ERROR") from e
-    
+
     def get_label(self, label_id):
         """
         Retrieves a label from the database by its ID.
@@ -454,7 +454,7 @@ class TodoDatabase:
 
     def clear_task_labels(self, task_id):
         query = "DELETE FROM task_labels WHERE task_id = ?"
-        
+
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -464,7 +464,7 @@ class TodoDatabase:
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
-    
+
     def get_task_labels(self, task_id):
         """
         Retrieves all labels associated with the specified task.
@@ -487,7 +487,7 @@ class TodoDatabase:
             JOIN task_labels tl ON l.id = tl.label_id
             WHERE tl.task_id = ?
         '''
-        
+
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -495,11 +495,11 @@ class TodoDatabase:
                 cursor.execute('SELECT id FROM tasks WHERE id = ?', (task_id,))
                 if cursor.fetchone() is None:
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
-                    
+
                 # Get the labels
                 cursor.execute(query, (task_id,))
                 return cursor.fetchall()
-                
+
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
@@ -512,7 +512,7 @@ class TodoDatabase:
             list: A list of tuples, where each tuple represents a label and contains the label's ID, name, and color.
         """
         query = 'SELECT * FROM labels'
-        
+
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -534,7 +534,7 @@ class TodoDatabase:
             None
         """
         query = 'INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)'
-        
+
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
