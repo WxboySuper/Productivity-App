@@ -54,7 +54,12 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         os.makedirs(cls.TEST_DB_DIR, exist_ok=True)
 
     def setUp(self):
-        """Set up test environment."""
+        """
+        Set up test environment.
+        
+        Initializes the test environment and sets up warning capture
+        to record and track all warnings aduring test execution.
+        """
         self.recorded_warnings = []
         self.warning_context = warnings.catch_warnings(record=True)
         self.warning_context.__enter__()
@@ -64,7 +69,17 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         self.db = TodoDatabase(self.TEST_DB_NAME)
 
     def _record_warning(self, message, category, filename, lineno, *args, **kwards):
-        """Record a warning message."""
+        """
+        Record a warning message.
+        
+        Args:
+            message: The warning message
+            category: The warning category (e.g., DeprecationWarning)
+            filename: The file where the warning occured
+            lineno: The line number where the warning occured
+            *args: Additional positional arguements from the warning
+            **kwards: Additional keyword arguments from the warning
+        """
         self.recorded_warnings.append(warnings.WarningMessage(
             message=str(message),
             category=category,
