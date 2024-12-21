@@ -58,11 +58,26 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         self.warning_context = warnings.catch_warnings(record=True)
         self.warning_context.__enter__()
         warnings.simplefilter("always")
+        warnings.showwarning = lambda message, category, filename, lineno, *args, **kwargs: \
+            self.recorded_warnings.append(warnings.WarningMessage(
+                messege=message,
+                category=category,
+                filename=filename,
+                lineno=lineno,
+                line=None
+            ))
         self._remove_db_file()
         self.db = TodoDatabase(self.TEST_DB_NAME)
 
     def tearDown(self):
         """Clean up after each test."""
+        # Process warnings before cleanup
+        self.warning_context.__exit__(None, None, None)
+        if self.recorded_warnings:
+            for warning in self.recorded_warnings:
+                print(f"WARNING: {warning.category.__name__}: {warning.message}"
+                      f"at {warning.filename}:{warning.lineno}")
+                
         if hasattr(self, 'db'):
             self.db.__del__()  # This might generate a resource warning
             del self.db
@@ -75,17 +90,6 @@ class BaseTodoDatabaseTest(unittest.TestCase):
             del self._connection_pool[self.TEST_DB_NAME]
 
         self._remove_db_file()
-        
-        # Get the recorded warnings before exiting context
-        self.warning_context.__exit__(None, None, None)
-        
-        # Now safely process the recorded warnings
-        if self.recorded_warnings:
-            for warning in self.recorded_warnings:
-                print(f"Warning message: {warning.message}")
-                print(f"Warning category: {warning.category}")
-                print(f"Warning filename: {warning.filename}")
-                print(f"Warning lineno: {warning.lineno}")
 
     def _remove_db_file(self):
         """Helper to safely remove database file."""
