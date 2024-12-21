@@ -176,7 +176,6 @@ class TodoDatabase:
                 - DB_CONN_ERROR: If there is a database connection error.
                 - DB_QUERY_ERROR: If there is an error execuring the query.
         """
-
         self._validate_priority(priority)
         self._validate_title(title)
 
@@ -260,7 +259,6 @@ class TodoDatabase:
         Raises:
             DatabaseError: If there is an error updating the task.
         """
-
         if not updates:
             raise DatabaseError("No updates provided", "NO_UPDATES")
 
