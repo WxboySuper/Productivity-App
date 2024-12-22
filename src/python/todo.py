@@ -108,7 +108,7 @@ class TodoList:
                 if task[6]:  # Assuming index 6 stores the completion status
                     log.warning("Task is already marked as completed")
                     raise ValueError("Task is already marked as completed")
-                    
+
                 self.db.mark_completed(task_id)
                 self.refresh_tasks()
                 log.info("Task marked as completed!")
