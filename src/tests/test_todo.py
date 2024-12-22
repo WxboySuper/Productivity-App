@@ -428,3 +428,23 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
 
             self.assertIn("Database error", str(context.exception))
             mock_log_error.assert_called_once()
+    
+    def test_mark_completed_already_completed(self):
+        """Verify that mark_completed raises ValueError when task is already completed."""
+        # Set up test data
+        test_tasks = [(1, "Task 1"), (2, "Task 2")]
+        self.todo_list.tasks = test_tasks
+        
+        # Mock get_task to return a completed task (completion status at index 6)
+        self.mock_db.get_task.return_value = (1, "Task 1", None, None, None, None, True)
+
+        # Verify ValueError is raised
+        with patch('logging.warning') as mock_log_warning:
+            with self.assertRaises(ValueError) as context:
+                self.todo_list.mark_completed(0)
+
+            self.assertIn("Task is already marked as completed", str(context.exception))
+            mock_log_warning.assert_called_once_with("Task is already marked as completed")
+            
+        # Verify mark_completed was not called since task was already completed
+        self.mock_db.mark_completed.assert_not_called()
