@@ -2,7 +2,7 @@ from src.python.todo import TodoList
 import os
 import unittest
 from datetime import datetime
-from unittest.mock import Mock, patch, call, PropertyMock
+from unittest.mock import Mock, patch, call
 import logging
 from src.python.database import DatabaseError
 
