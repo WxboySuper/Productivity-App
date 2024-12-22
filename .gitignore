@@ -16,6 +16,7 @@ test_todo_get_all.db
 /dist
 /htmlcov
 coverage.xml
+coverage.lcov
 
 # Python Cachee Folders
 /src/python/__pycache__
