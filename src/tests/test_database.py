@@ -56,7 +56,6 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     def setUp(self):
         """
         Set up test environment.
-
         Initializes the test environment and sets up warning capture
         to record and track all warnings during test execution.
         """
@@ -71,7 +70,6 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     def _record_warning(self, message, category, filename, lineno, *args, **kwards):
         """
         Record a warning message.
-
         Args:
             message: The warning message
             category: The warning category (e.g., DeprecationWarning)
