@@ -55,7 +55,7 @@ class TodoList:
             log.error("Timeout while refreshing tasks: %s", str(e))
             self.tasks = []
             raise RuntimeError(f"Commection timeout: {e}") from e
-        except (DatabaseError) as e:
+        except DatabaseError as e:
             log.error("Failed to refresh tasks: %s", str(e))
             self.tasks = []  # Reset to empty list on error
             raise RuntimeError(f"Database error: {str(e)}") from e
@@ -86,7 +86,7 @@ class TodoList:
         except TimeoutError as e:
             log.error("Timeout while adding task: %s", str(e))
             raise RuntimeError(f"Connection timeout: {e}") from e
-        except (DatabaseError) as e:
+        except DatabaseError as e:
             log.error("Database error while adding task: %s", str(e))
             raise RuntimeError(f"Database error: {str(e)}") from e
 
