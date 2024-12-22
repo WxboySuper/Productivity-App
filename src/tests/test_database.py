@@ -92,23 +92,17 @@ class BaseTodoDatabaseTest(unittest.TestCase):
 
     def tearDown(self):
         """Clean up after each test."""
-        # Process warnings before cleanup
-        self.warning_context.__exit__(None, None, None)
-        if self.recorded_warnings:
-            for warning in self.recorded_warnings:
-                print(f"WARNING: {warning.category.__name__}: {warning.message} "
-                      f"at {warning.filename}:{warning.lineno}")
-
         if hasattr(self, 'db'):
-            self.db.__del__()  # This might generate a resource warning
             del self.db
 
-        if self.TEST_DB_NAME in self._connection_pool:
-            with suppress(Exception):
-                self._connection_pool[self.TEST_DB_NAME].close()
-            del self._connection_pool[self.TEST_DB_NAME]
-
-        self._remove_db_file()
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up test files after all tests."""
+        with suppress(Exception):
+            if os.path.exists(cls.TEST_DB_NAME):
+                os.remove(cls.TEST_DB_NAME)
+            if os.path.exists(cls.TEST_DB_DIR):
+                os.rmdir(cls.TEST_DB_DIR)
 
     def _remove_db_file(self):
         """Helper to safely remove database file."""
