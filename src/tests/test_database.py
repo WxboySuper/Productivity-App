@@ -207,6 +207,29 @@ class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
             self.db.add_task(self.BASIC_TASK_TITLE, priority=self.INVALID_PRIORITY)
         self.assertEqual(cm.exception.code, "INVALID_PRIORITY")
 
+    def test_add_task_db_conn_error(self):
+        """Verify that a database connection error is handled correctly."""
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.add_task(self.BASIC_TASK_TITLE)
+            self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+    def test_add_task_db_query_error(self):
+        """Verify that a database query error is handled correctly."""
+        with patch('sqlite3.connect') as mock_connect:
+            mock_conn = mock_connect.return_value
+            mock_cursor = mock_conn.cursor.return_value
+            # Mock the execute method to raise a SQLite error
+            mock_cursor.execute.side_effect = sqlite3.Error("Query error")
+            # Mock the __enter__ and __exit__ methods for context manager
+            mock_conn.__enter__.return_value = mock_conn
+            mock_conn.__exit__.side_effect = None
+            
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.add_task(self.BASIC_TASK_TITLE)
+            self.assertEqual(cm.exception.code, "DB_QUERY_ERROR")
+
 class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
     """Test suite for TodoDatabase class delete_task method."""
 
@@ -748,3 +771,26 @@ class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
             with self.assertRaises(DatabaseError) as cm:
                 self.db.link_task_label(task_id, label_id)
             self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+            class TestTodoDatabaseAddTaskExtended(BaseTodoDatabaseTest):
+                """Extended test suite for add_task function in TodoDatabase class."""
+
+                TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_add_extended.db')
+
+                def setUp(self):
+                    super().setUp()
+
+                def test_add_task_with_priority_values(self):
+                    """Test task creation with each valid priority value."""
+                    priorities = ['ASAP', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST']
+                    for priority in priorities:
+                        task_id = self.db.add_task(
+                            title=f"Priority Test Task {priority}",
+                            priority=priority
+                        )
+                        task = self.db.get_task(task_id)
+                        self.assertEqual(task[6], priority)
+
+                def test_add_task_with_special_characters(self):
+                    """Test task creation with special characters in title and notes."""
+                    special_title = "Test @#$%^&* Special"
+                    special_notes = "Notes with ★§♠♣±"
