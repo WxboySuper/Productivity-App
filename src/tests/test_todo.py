@@ -81,6 +81,84 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
     def setUp(self):
         super().setUp()
 
+    def test_refresh_tasks_with_deadline_dates(self):
+        """Verify refresh_tasks correctly handles tasks with deadline dates."""
+        # Prepare test data with various deadline dates
+        test_date_1 = datetime(2023, 12, 31)
+        test_date_2 = datetime(2024, 1, 1)
+        test_tasks = [
+            (1, "Task with date", test_date_1, None, None, None),
+            (2, "Task with different date", test_date_2, "Work", None, 1),
+            (3, "Task without date", None, None, None, None)
+        ]
+
+        # Configure mock
+        self.mock_db.get_all_tasks.return_value = test_tasks
+
+        # Call refresh_tasks
+        self.todo_list.refresh_tasks()
+
+        # Verify
+        self.mock_db.get_all_tasks.assert_called_once()
+        self.assertEqual(self.todo_list.tasks, test_tasks)
+        self.assertEqual(self.todo_list.tasks[0][2], test_date_1)
+        self.assertEqual(self.todo_list.tasks[1][2], test_date_2)
+        self.assertIsNone(self.todo_list.tasks[2][2])
+
+    def test_refresh_tasks_with_priority_levels(self):
+        """Verify refresh_tasks correctly handles tasks with different priority levels."""
+        test_tasks = [
+            (1, "High priority", None, None, None, 1),
+            (2, "Medium priority", None, None, None, 5),
+            (3, "Low priority", None, None, None, 10),
+            (4, "Zero priority", None, None, None, 0),
+            (5, "Negative priority", None, None, None, -1)
+        ]
+
+        self.mock_db.get_all_tasks.return_value = test_tasks
+
+        self.todo_list.refresh_tasks()
+
+        self.assertEqual(self.todo_list.tasks, test_tasks)
+        self.assertEqual(self.todo_list.tasks[0][5], 1)
+        self.assertEqual(self.todo_list.tasks[4][5], -1)
+
+    def test_refresh_tasks_with_special_characters(self):
+        """Verify refresh_tasks correctly handles tasks with special characters."""
+        test_tasks = [
+            (1, "Task with @#$%^&*", None, "Category with !@#", "Notes with €£¥", 1),
+            (2, "Empty spaces   ", None, "   Leading spaces", "Trailing spaces   ", 2),
+            (3, "Unicode chars 你好", None, "Category 你好", "Notes 你好", 3),
+            (4, "Escaped chars \n\t\r", None, None, None, 4)
+        ]
+
+        self.mock_db.get_all_tasks.return_value = test_tasks
+
+        self.todo_list.refresh_tasks()
+
+        self.assertEqual(self.todo_list.tasks, test_tasks)
+        self.assertEqual(self.todo_list.tasks[0][1], "Task with @#$%^&*")
+        self.assertEqual(self.todo_list.tasks[2][1], "Unicode chars 你好")
+
+    def test_refresh_tasks_with_long_strings(self):
+        """Verify refresh_tasks correctly handles tasks with very long strings."""
+        long_task = "x" * 1000  # 1000 character string
+        long_category = "y" * 500
+        long_notes = "z" * 2000
+
+        test_tasks = [
+            (1, long_task, None, long_category, long_notes, 1)
+        ]
+
+        self.mock_db.get_all_tasks.return_value = test_tasks
+
+        self.todo_list.refresh_tasks()
+
+        self.assertEqual(self.todo_list.tasks, test_tasks)
+        self.assertEqual(len(self.todo_list.tasks[0][1]), 1000)
+        self.assertEqual(len(self.todo_list.tasks[0][3]), 500)
+        self.assertEqual(len(self.todo_list.tasks[0][4]), 2000)
+        
     def test_refresh_tasks_successful(self):
         """Verify that refresh_tasks successfully updates the tasks list with database data."""
         # Prepare test data
