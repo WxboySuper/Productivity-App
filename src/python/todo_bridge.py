@@ -7,7 +7,7 @@ todo = TodoList()
 def handle_command(cmd, payload):
     if cmd == "get_tasks":
         return todo.tasks
-    elif cmd == "add_tasks":
+    if cmd == "add_tasks":
         return todo.add_task(payload["title"], payload["deadline"], payload["category"])
     # Add more commands as needed
 
