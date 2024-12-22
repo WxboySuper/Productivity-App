@@ -3,26 +3,12 @@ import os
 import logging as log
 from logging.handlers import RotatingFileHandler
 
-log_dir = os.getenv("LOG_DIR", "logs")
-try:
-    os.makedirs(log_dir, exist_ok=True)
-except PermissionError as e:
-    log.error("Failed to create log directory: %s", e)
-    # Fallback to a user-writable directory
-    log_dir = os.path.join(os.path.expanduser("~"), "logs")
-    os.makedirs(log_dir, exist_ok=True)
-
-handler = RotatingFileHandler(
-    os.path.join(log_dir, 'database.log'),
-    maxBytes=int(os.getenv("LOG_MAX_BYTES", str(1024*1024))), # Default 1MB
-    backupCount = int(os.getenv("LOG_BACKUP_COUNT", "5")), # Default 5 backups
-)
+os.makedirs("logs", exist_ok=True)
 
 log.basicConfig(
     level=log.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[handler]
 )
 
 
@@ -87,21 +73,6 @@ class TodoDatabase:
             self.init_database(conn)
         self.db_file = db_file
         self._conn = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-
-    def _get_connection(self):
-        """Get or create database connection."""
-        if not self._conn:
-            self._conn = sqlite3.connect(self.db_file)
-            self._conn.execute("PRAGMA foreign_keys = ON")
-        return self._conn
 
     def __del__(self):
         """Ensures database connection is closed when object is destroyed.
