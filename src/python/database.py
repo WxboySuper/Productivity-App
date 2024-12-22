@@ -85,6 +85,23 @@ class TodoDatabase:
         # Initialize database but don't keep connection open
         with sqlite3.connect(self.db_file) as conn:
             self.init_database(conn)
+        self.db_file = db_file
+        self._conn = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+    def _get_connection(self):
+        """Get or create database connection."""
+        if not self._conn:
+            self._conn = sqlite3.connect(self.db_file)
+            self._conn.execute("PRAGMA foreign_keys = ON")
+        return self._conn
 
     def __del__(self):
         """Ensures database connection is closed when object is destroyed.

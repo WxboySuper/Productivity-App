@@ -11,12 +11,12 @@ from contextlib import suppress
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
     """Base test class for TodoDatabase class."""
-    
+
     # Test data constants
     BASIC_TASK_TITLE = "Test Task"
 
     BASIC_LABEL_TITLE = "Test Label"
-    
+
     # Full task data
     FULL_TASK_DATA = {
         'title': "Complete Project",
@@ -25,7 +25,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
         'notes': "Important project deadline",
         'priority': "HIGH"
     }
-    
+
     # Partial task data
     PARTIAL_TASK_DATA = {
         'title': "Partial Task",
@@ -56,7 +56,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     def setUp(self):
         """
         Set up test environment.
-        
+
         Initializes the test environment and sets up warning capture
         to record and track all warnings during test execution.
         """
@@ -71,7 +71,7 @@ class BaseTodoDatabaseTest(unittest.TestCase):
     def _record_warning(self, message, category, filename, lineno, *args, **kwards):
         """
         Record a warning message.
-        
+
         Args:
             message: The warning message
             category: The warning category (e.g., DeprecationWarning)
@@ -92,23 +92,17 @@ class BaseTodoDatabaseTest(unittest.TestCase):
 
     def tearDown(self):
         """Clean up after each test."""
-        # Process warnings before cleanup
-        self.warning_context.__exit__(None, None, None)
-        if self.recorded_warnings:
-            for warning in self.recorded_warnings:
-                print(f"WARNING: {warning.category.__name__}: {warning.message} "
-                      f"at {warning.filename}:{warning.lineno}")
-                
         if hasattr(self, 'db'):
-            self.db.__del__()  # This might generate a resource warning
             del self.db
 
-        if self.TEST_DB_NAME in self._connection_pool:
-            with suppress(Exception):
-                self._connection_pool[self.TEST_DB_NAME].close()
-            del self._connection_pool[self.TEST_DB_NAME]
-
-        self._remove_db_file()
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up test files after all tests."""
+        with suppress(Exception):
+            if os.path.exists(cls.TEST_DB_NAME):
+                os.remove(cls.TEST_DB_NAME)
+            if os.path.exists(cls.TEST_DB_DIR):
+                os.rmdir(cls.TEST_DB_DIR)
 
     def _remove_db_file(self):
         """Helper to safely remove database file."""
@@ -138,8 +132,8 @@ class BaseTodoDatabaseTest(unittest.TestCase):
 
 class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
     """Test suite for add_task function in TodoDatabase class."""
-    
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_add.db')
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_add.db')
 
     def setUp(self):
         super().setUp()
@@ -154,7 +148,7 @@ class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
         """Verify task creation with all available fields populated."""
         deadline_var = datetime.now()
         deadline_str = deadline_var.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         task_data = self.FULL_TASK_DATA.copy()
         task_data['deadline'] = deadline_str
 
@@ -170,7 +164,7 @@ class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
             cursor = conn.cursor()
             cursor.execute("SELECT id, title, deadline, category, notes, priority FROM tasks WHERE id=?", (task_id,))
             task = cursor.fetchone()
-        
+
         # Explicitly specify the column indices based on the SELECT statement order
         self.assertEqual(task[0], task_id)  # id
         self.assertEqual(task[1], task_data['title'])  # title
@@ -186,12 +180,12 @@ class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
             category=self.PARTIAL_TASK_DATA['category'],
             priority=self.PARTIAL_TASK_DATA['priority']
         )
-        
+
         with sqlite3.connect(self.db.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id, title, deadline, category, notes, priority FROM tasks WHERE id=?", (task_id,))
             task = cursor.fetchone()
-            
+
         self.assertEqual(task[1], self.PARTIAL_TASK_DATA['title'])
         self.assertIsNone(task[2] or None)  # Convert SQLite NULL (0) to Python None
         self.assertEqual(task[3], self.PARTIAL_TASK_DATA['category'])
@@ -217,8 +211,8 @@ class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
 
 class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
     """Test suite for TodoDatabase class delete_task method."""
-    
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_delete.db')
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_delete.db')
 
     def setUp(self):
         super().setUp()
@@ -228,7 +222,7 @@ class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
         """Verify that a task can be deleted by its ID."""
         deadline_var = datetime.now()
         deadline_str = deadline_var.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         task_data = self.FULL_TASK_DATA.copy()
         task_data['deadline'] = deadline_str
 
@@ -254,7 +248,7 @@ class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.delete_task(9999)
         self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
-    
+
     @patch('sqlite3.connect')
     def test_delete_task_db_connection_error(self, mock_connect):
         """Verify that a database connection error is handled correctly."""
@@ -266,11 +260,11 @@ class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
 class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
     """Test suite for TodoDatabase class update_task method."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_update.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_update.db')
 
     def setUp(self):
         super().setUp()
-    
+
     def test_update_task_successful(self):
         """Verify that a task can be successfully updated with valid fields."""
         task_data = self.FULL_TASK_DATA
@@ -283,7 +277,7 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
             notes=task_data['notes'],
             priority=task_data['priority']
         )
-        
+
         updates = {
                 'title': "Updated Task Title",
                 'completed': True,
@@ -309,19 +303,19 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
         self.assertEqual(task[5], updates['notes'])
         self.assertIsInstance(task[6], str, "Priority should be a string")
         self.assertEqual(task[6], updates['priority'])
-    
+
     def test_update_nonexistent_task(self):
         """Verify that updating a nonexistent task raises a DatabaseError."""
         updates = {'title': 'Nonexistent Task'}
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(9999, **updates)
         self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
-    
+
     def test_update_task_with_invalid_field(self):
         """Verify that updating a task with an invalid field does not change the task."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
         updates = {'invalid_field': "Invalid Value"}
-        
+
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(task_id, **updates)
         self.assertEqual(cm.exception.code, "NO_UPDATES")
@@ -333,7 +327,7 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(task_id, **updates)
         self.assertEqual(cm.exception.code, "INVALID_PRIORITY")
-    
+
     def test_update_task_empty_title(self):
         """Verify that updating a task with an empty title raises a DatabaseError."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -341,7 +335,7 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(task_id, **updates)
         self.assertEqual(cm.exception.code, "EMPTY_TITLE")
-    
+
     def test_update_task_none_title(self):
         """Verify that updating a task with a None title raises a DatabaseError."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -357,7 +351,7 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(task_id, **updates)
         self.assertEqual(cm.exception.code, "NO_UPDATES")
-        
+
     def test_update_task_empty_optional_fields(self):
         """Verify that empty strings are handled correctly for optional fields."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -377,12 +371,12 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
 
 class TestTodoDatabaseMarkCompleted(BaseTodoDatabaseTest):
     """"Test suite for TodoDatabase.get_task method."""
-    
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_mark_completed.db')
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_mark_completed.db')
 
     def setUp(self):
         super().setUp()
-    
+
     # Test Suite for mark_completed Functionality
     def test_mark_completed_successful(self):
         """Verify that a task can be successfully marked as completed."""
@@ -390,13 +384,13 @@ class TestTodoDatabaseMarkCompleted(BaseTodoDatabaseTest):
         self.db.mark_completed(task_id)
         task = self.db.get_task(task_id)
         self.assertTrue(task[2])
-    
+
     def test_mark_completed_nonexistent_task(self):
         """Verify that marking a nonexistent task as completed raises DatabaseError."""
         with self.assertRaises(DatabaseError) as cm:
             self.db.mark_completed(9999)
         self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
-    
+
     @patch('sqlite3.connect')
     def test_mark_completed_db_connection_error(self, mock_connect):
         """Verify that a database connection error is handled correctly."""
@@ -407,8 +401,8 @@ class TestTodoDatabaseMarkCompleted(BaseTodoDatabaseTest):
 
 class TestTodoDatabaseGetTask(BaseTodoDatabaseTest):
     """Test suite for TodoDatabase.get_task method."""
-    
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get.db')
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_get.db')
 
     def setUp(self):
         super().setUp()
@@ -420,13 +414,13 @@ class TestTodoDatabaseGetTask(BaseTodoDatabaseTest):
         task = self.db.get_task(task_id)
         self.assertEqual(task[0], task_id,)
         self.assertEqual(task[1], self.BASIC_TASK_TITLE)
-    
+
     def test_get_task_nonexistent_task(self):
         """Verify that retrieving a nonexistent task raises DatabaseError."""
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_task(9999)
         self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
-    
+
     @patch('sqlite3.connect')
     def test_get_task_db_connection_error(self, mock_connect):
         """Verify that a database connection error is handled correctly."""
@@ -434,11 +428,11 @@ class TestTodoDatabaseGetTask(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_task(1)
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
-    
+
 class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
     """Separate test class for get_all_tasks functionality to ensure isolation."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get_all.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_get_all.db')
 
     def setUp(self):
         super().setUp()
@@ -447,7 +441,7 @@ class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
         """Verify that all tasks can be successfully retrieved."""
         self.db.add_task(self.BASIC_TASK_TITLE)
         self.db.add_task(self.BASIC_TASK_TITLE)
-        
+
         tasks = self.db.get_all_tasks()
         self.assertEqual(len(tasks), 2)
 
@@ -456,7 +450,7 @@ class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
         """Verify that a database connection error is handled correctly."""
         # Set up mock before creating database instance
         mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
-        
+
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_all_tasks()
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
@@ -464,7 +458,7 @@ class TestTodoDatabaseGetAllTasks(BaseTodoDatabaseTest):
 class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
     """Test suite for add_label function in TodoDatabase class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_add_label.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_add_label.db')
 
     def setUp(self):
         super().setUp()
@@ -480,18 +474,18 @@ class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
         """Verify that a label can be added with a color value."""
         test_name = f"ColorLabel_{int(time.time())}"  # Unique name
         test_color = "#FF0000"
-        
+
         # Verify schema first
         with sqlite3.connect(self.db.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute("PRAGMA table_info(labels)")
             columns = [col[1] for col in cursor.fetchall()]
             self.assertIn('color', columns, "Labels table missing color column")
-        
+
         # Add label with color
         label_id = self.db.add_label(test_name, color=test_color)
         self.assertIsNotNone(label_id, "Should return valid label ID")
-        
+
         # Verify using explicit column names
         with sqlite3.connect(self.db.db_file) as conn:
             cursor = conn.cursor()
@@ -501,7 +495,7 @@ class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
                 WHERE id = ?
             """, (label_id,))
             label = cursor.fetchone()
-            
+
             self.assertIsNotNone(label, f"Label {label_id} not found")
             self.assertEqual(label[0], label_id, "ID mismatch")
             self.assertEqual(label[1], test_name, "Name mismatch")
@@ -546,7 +540,7 @@ class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
     def test_add_label_persists(self):
         """Verify that added labels persist in the database."""
         label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
-        
+
         # Create new database instance to verify persistence
         new_db = TodoDatabase(self.TEST_DB_NAME)
         labels = new_db.get_all_labels()
@@ -555,24 +549,24 @@ class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
 class TestTodoDatabaseGetLabel(BaseTodoDatabaseTest):
     """Test suite for get_label function in TodoDatabase class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get_label.db')
-    
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_get_label.db')
+
     def setUp(self):
         super().setUp()
-    
+
     def test_get_label_successful(self):
         """Verify that a label can be successfully retrieved by its ID."""
         label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
         label = self.db.get_label(label_id)
         self.assertEqual(label[0], label_id)
         self.assertEqual(label[1], self.BASIC_LABEL_TITLE)
-    
+
     def test_get_label_nonexistent_label(self):
         """Verify that attempting to retrieve a non-existent label raises DatabaseError."""
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_label(9999)
         self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
-    
+
     def test_get_label_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
         label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
@@ -585,11 +579,11 @@ class TestTodoDatabaseGetLabel(BaseTodoDatabaseTest):
 class TestTodoDatabaseDeleteLabel(BaseTodoDatabaseTest):
     """Test suite for delete_label function in TodoDatabase class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_delete_label.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_delete_label.db')
 
     def setUp(self):
         super().setUp()
-    
+
     def test_delete_label_successful(self):
         """Verify that a label can be successfully deleted by its ID."""
         label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
@@ -597,13 +591,13 @@ class TestTodoDatabaseDeleteLabel(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_label(label_id)
         self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
-    
+
     def test_delete_nonexistent_label(self):
         """Verify that attempting to delete a non-existent label raises DatabaseError."""
         with self.assertRaises(DatabaseError) as cm:
             self.db.delete_label(9999)
         self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
-    
+
     def test_delete_label_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
         label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
@@ -616,7 +610,7 @@ class TestTodoDatabaseDeleteLabel(BaseTodoDatabaseTest):
 class TestTodoDatabaseClearTaskLabels(BaseTodoDatabaseTest):
     """Test suite for clear_task_labels function in TodoDatabase class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_clear_task_labels.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_clear_task_labels.db')
 
     def setUp(self):
         super().setUp()
@@ -653,11 +647,11 @@ class TestTodoDatabaseClearTaskLabels(BaseTodoDatabaseTest):
 class TestTodoDatabaseGetTaskLabels(BaseTodoDatabaseTest):
     """Test suite for get_task_labels function in TodoDatabase class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get_task_labels.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_get_task_labels.db')
 
     def setUp(self):
         super().setUp()
-    
+
     def test_get_task_labels_successful(self):
         """Verify that labels can be successfully retrieved for a task by its ID."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -666,13 +660,13 @@ class TestTodoDatabaseGetTaskLabels(BaseTodoDatabaseTest):
         labels = self.db.get_task_labels(task_id)
         self.assertEqual(len(labels), 1)
         self.assertEqual(labels[0][1], self.BASIC_LABEL_TITLE)
-    
+
     def test_get_task_labels_nonexistent_task(self):
         """Verify that attempting to retrieve labels for a non-existent task raises DatabaseError."""
         with self.assertRaises(DatabaseError) as cm:
             self.db.get_task_labels(9999)
         self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
-    
+
     def test_get_task_labels_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -685,18 +679,18 @@ class TestTodoDatabaseGetTaskLabels(BaseTodoDatabaseTest):
 class TestTodoDatabaseGetAllLabels(BaseTodoDatabaseTest):
     """Test suite for get_all_labels function in TodoDatabase class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_get_all_labels.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_get_all_labels.db')
 
     def setUp(self):
         super().setUp()
-    
+
     def test_get_all_labels_successful(self):
         """Verify that all labels can be successfully retrieved."""
         self.db.add_label(self.BASIC_LABEL_TITLE)
         self.db.add_label('test label 2')
         labels = self.db.get_all_labels()
         self.assertEqual(len(labels), 2)
-    
+
     def test_get_all_labels_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
         with patch('sqlite3.connect') as mock_connect:
@@ -708,29 +702,29 @@ class TestTodoDatabaseGetAllLabels(BaseTodoDatabaseTest):
 class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
     """Test suite for link_task_label function in TodoDatabase class."""
 
-    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_todo_link_task_label.db')
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_link_task_label.db')
 
     def setUp(self):
         super().setUp()
-    
+
     def test_link_task_label_successful(self):
         """Verify that a task and label can be successfully linked."""
         # Create test data
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
         label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
-        
+
         # Link task and label
         self.db.link_task_label(task_id, label_id)
-        
+
         # Get linked labels
         labels = self.db.get_task_labels(task_id)
-        
+
         # Verify results
         self.assertEqual(len(labels), 1, "Expected exactly one label")
         label = labels[0]  # Label format is (id, name, color)
         self.assertEqual(label[0], label_id, "Label ID should match")
         self.assertEqual(label[1], self.BASIC_LABEL_TITLE, "Label name should match")
-    
+
     def test_link_task_label_nonexistent_task(self):
         """Verify that attempting to link a task and label with a non-existent task raises DatabaseError."""
         task_id = 9999
@@ -746,7 +740,7 @@ class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.link_task_label(task_id, label_id)
         self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
-    
+
     def test_link_task_label_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)

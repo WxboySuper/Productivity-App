@@ -1,7 +1,8 @@
 [run]
-source = .
+source = src/python
 omit = 
-  /tests/*
+    */test_*.py
+    */__init__.py
 
 [report]
   fail_under = 80
