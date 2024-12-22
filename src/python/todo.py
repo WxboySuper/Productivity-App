@@ -42,7 +42,7 @@ class TodoList:
 
     def refresh_tasks(self):
         """
-        Refreshes the list of tasks by retrieving all tasks 
+        Refreshes the list of tasks by retrieving all tasks
         from the database and updating the `tasks` attribute.
 
         Raises:
