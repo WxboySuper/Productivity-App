@@ -4,6 +4,7 @@ todo.db
 test_todo.db
 test_todo_get_all.db
 /src/tests/test_databases
+.coverage
 
 # Development  Folders
 /.venv
@@ -13,6 +14,9 @@ test_todo_get_all.db
 /python-embedded
 /releases
 /dist
+/htmlcov
+coverage.xml
+coverage.lcov
 
 # Python Cachee Folders
 /src/python/__pycache__
