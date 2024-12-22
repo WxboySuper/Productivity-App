@@ -127,7 +127,9 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
 
             self.assertIn("Database error", str(context.exception))
             self.assertEqual(self.todo_list.tasks, [])
-            mock_log_error.assert_called_once()
+            mock_log_error.assert_called_once_with(
+                "Failed to refresh tasks: %s", "Database error"
+            )
             self.mock_db.get_all_tasks.assert_called_once()
 
     def test_refresh_tasks_connection_timeout(self):
