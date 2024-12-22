@@ -335,15 +335,15 @@ class TestTodoListAddTask(BaseTodoListTest):
         self.todo_list.refresh_tasks = Mock()
         self.todo_list.add_task(self.BASIC_TASK)
         self.todo_list.refresh_tasks.assert_called_once()
-    
+
     def test_add_task_database_error(self):
         """Verify database error handling during task addition."""
         self.mock_db.add_task.side_effect = DatabaseError("Database error", code=1)
-        
+
         with patch('logging.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.add_task(self.BASIC_TASK)
-            
+
             self.assertIn("Database error", str(context.exception))
             mock_log_error.assert_called_once()
 
@@ -361,7 +361,7 @@ class TestTodoListAddTask(BaseTodoListTest):
     def test_add_task_invalid_input(self):
         """Verify invalid input handling."""
         invalid_inputs = [None, "", 123, [], {}]
-        
+
         for invalid_input in invalid_inputs:
             with self.assertRaises(ValueError) as context:
                 self.todo_list.add_task(invalid_input)
@@ -374,34 +374,46 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
         super().setUp()
 
     def test_mark_completed_successful(self):
-        """Verify that mark_completed successfully marks a task as completed."""
-        # Set up test data
-        test_tasks = [(1, "Task 1"), (2, "Task 2")]
+        """Verify successful task completion."""
+        # Setup test data
+        test_tasks = [
+            (1, "Task 1", None, None, None, None, False),
+            (2, "Task 2", None, None, None, None, False)
+        ]
         self.todo_list.tasks = test_tasks
 
-        # Mock refresh_tasks
+        # Mock get_task to return uncompleted task
+        self.mock_db.get_task.return_value = test_tasks[0]
+
+        # Mock successful completion
+        self.mock_db.mark_completed.return_value = True
         self.todo_list.refresh_tasks = Mock()
 
-        # Call mark_completed
+        # Execute test
         self.todo_list.mark_completed(0)
 
-        # Verify the database method was called with correct task_id
+        # Verify behavior
         self.mock_db.mark_completed.assert_called_once_with(1)
-
-        # Verify refresh_tasks was called
         self.todo_list.refresh_tasks.assert_called_once()
-    
+        self.mock_db.get_task.assert_called_once_with(1)
+
     def test_mark_completed_invalid_index(self):
         """Verify that mark_completed raises an IndexError for an invalid task index."""
         with self.assertRaises(IndexError) as context:
             self.todo_list.mark_completed(-1)
         self.assertIn("Invalid task index", str(context.exception))
-    
+
     def test_mark_completed_timeout_error(self):
         """Verify timeout error handling during task completion."""
-        # Set up test data
-        test_tasks = [(1, "Task 1"), (2, "Task 2")]
+        # Setup test data - (id, title, deadline, category, notes, priority, completed)
+        test_tasks = [
+            (1, "Task 1", None, None, None, None, False),
+            (2, "Task 2", None, None, None, None, False)
+        ]
         self.todo_list.tasks = test_tasks
+
+        # Mock get_task to return complete task data
+        self.mock_db.get_task.return_value = test_tasks[0]
 
         # Configure mock for timeout
         self.mock_db.mark_completed.side_effect = TimeoutError("Connection timeout")
@@ -412,12 +424,20 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
 
             self.assertIn("Connection timeout", str(context.exception))
             mock_log_error.assert_called_once()
-    
+            self.mock_db.get_task.assert_called_once_with(1)
+
     def test_mark_completed_database_error(self):
         """Verify database error handling during task completion."""
-        # Set up test data
-        test_tasks = [(1, "Task 1"), (2, "Task 2")]
+        # Set up test data with complete task tuple structure
+        # (id, title, deadline, category, notes, priority, completed)
+        test_tasks = [
+            (1, "Task 1", None, None, None, None, False),
+            (2, "Task 2", None, None, None, None, False)
+        ]
         self.todo_list.tasks = test_tasks
+
+        # Mock get_task to return valid task data
+        self.mock_db.get_task.return_value = test_tasks[0]
 
         # Configure mock for database error
         self.mock_db.mark_completed.side_effect = DatabaseError("Database error", code=1)
@@ -428,13 +448,14 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
 
             self.assertIn("Database error", str(context.exception))
             mock_log_error.assert_called_once()
-    
+            self.mock_db.get_task.assert_called_once_with(1)
+
     def test_mark_completed_already_completed(self):
         """Verify that mark_completed raises ValueError when task is already completed."""
         # Set up test data
         test_tasks = [(1, "Task 1"), (2, "Task 2")]
         self.todo_list.tasks = test_tasks
-        
+
         # Mock get_task to return a completed task (completion status at index 6)
         self.mock_db.get_task.return_value = (1, "Task 1", None, None, None, None, True)
 
@@ -445,6 +466,6 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
 
             self.assertIn("Task is already marked as completed", str(context.exception))
             mock_log_warning.assert_called_once_with("Task is already marked as completed")
-            
+
         # Verify mark_completed was not called since task was already completed
         self.mock_db.mark_completed.assert_not_called()
