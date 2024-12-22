@@ -99,10 +99,16 @@ class TodoList:
 
         Raises:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
+            ValueError: If the task is already marked as completed.
         """
         if 0 <= task_index < len(self.tasks):
             task_id = self.tasks[task_index][0]
             try:
+                task = self.db.get_task(task_id)
+                if task[6]:  # Assuming index 6 stores the completion status
+                    log.warning("Task is already marked as completed")
+                    raise ValueError("Task is already marked as completed")
+                    
                 self.db.mark_completed(task_id)
                 self.refresh_tasks()
                 log.info("Task marked as completed!")
