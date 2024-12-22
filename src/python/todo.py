@@ -42,7 +42,8 @@ class TodoList:
 
     def refresh_tasks(self):
         """
-        Refreshes the list of tasks by retrieving all tasks from the database and updating the `tasks` attribute.
+        Refreshes the list of tasks by retrieving all tasks 
+        from the database and updating the `tasks` attribute.
 
         Raises:
             RuntimeError: If an error occurs while retrieving tasks from the database

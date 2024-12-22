@@ -49,7 +49,6 @@ class BaseTodoListTest(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
-
         self.mock_db = Mock()
         self.todo_list = TodoList(db=self.mock_db)
 
