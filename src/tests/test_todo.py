@@ -469,3 +469,71 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
 
         # Verify mark_completed was not called since task was already completed
         self.mock_db.mark_completed.assert_not_called()
+
+class TestTodoListUpdateTask(BaseTodoListTest):
+    """Test suite for update_task method of TodoList class."""
+    
+    def setUp(self):
+        super().setUp()
+
+    def test_update_task_successful(self):
+        """Verify successful task update."""
+        test_tasks = [(1, "Task 1"), (2, "Task 2")]
+        self.todo_list.tasks = test_tasks
+        self.todo_list.refresh_tasks = Mock()
+        updates = {"task": "Updated Task", "priority": 1}
+
+        self.todo_list.update_task(0, **updates)
+
+        self.mock_db.update_task.assert_called_once_with(1, **updates)
+        self.todo_list.refresh_tasks.assert_called_once()
+
+    def test_update_task_invalid_index(self):
+        """Verify that update_task raises IndexError for invalid index."""
+        with self.assertRaises(IndexError) as context:
+            self.todo_list.update_task(-1, task="Updated")
+        self.assertIn("Invalid task index", str(context.exception))
+
+    def test_update_task_database_error(self):
+        """Verify database error handling during task update."""
+        test_tasks = [(1, "Task 1")]
+        self.todo_list.tasks = test_tasks
+        self.mock_db.update_task.side_effect = DatabaseError("Database error", code=1)
+
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.update_task(0, task="Updated")
+                
+            self.assertIn("Database error", str(context.exception))
+            mock_log_error.assert_called_once()
+
+    def test_update_task_timeout_error(self):
+        """Verify timeout error handling during task update."""
+        test_tasks = [(1, "Task 1")]
+        self.todo_list.tasks = test_tasks
+        self.mock_db.update_task.side_effect = TimeoutError("Connection timeout")
+
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.update_task(0, task="Updated")
+
+            self.assertIn("Connection timeout", str(context.exception))
+            mock_log_error.assert_called_once()
+
+    def test_update_task_multiple_fields(self):
+        """Verify updating multiple task fields at once."""
+        test_tasks = [(1, "Task 1")]
+        self.todo_list.tasks = test_tasks
+        self.todo_list.refresh_tasks = Mock()
+        updates = {
+            "task": "Updated Task",
+            "deadline": datetime.now(),
+            "category": "Work",
+            "notes": "Important",
+            "priority": 1
+        }
+
+        self.todo_list.update_task(0, **updates)
+        
+        self.mock_db.update_task.assert_called_once_with(1, **updates)
+        self.todo_list.refresh_tasks.assert_called_once()
