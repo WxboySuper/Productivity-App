@@ -160,13 +160,21 @@ class TodoList:
 
         Raises:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
+            RuntimeError: If a database error or timeout occurs.
         """
         if 0 <= task_index < len(self.tasks):
             task_id = self.tasks[task_index][0]
-            task = self.db.get_task(task_id)
-            self.db.delete_task(task_id)
-            self.refresh_tasks()
-            print(f"Task '{task[1]}' deleted successfully!")
+            try:
+                task = self.db.get_task(task_id)
+                self.db.delete_task(task_id)
+                self.refresh_tasks()
+                log.info("Task '%s' deleted successfully!", task[1])
+            except TimeoutError as e:
+                log.error("Timeout while deleting task: %s", str(e))
+                raise RuntimeError(f"Connection timeout: {e}") from e
+            except DatabaseError as e:
+                log.error("Database error while deleting task: %s", str(e))
+                raise RuntimeError(f"Database error: {str(e)}") from e
         else:
             log.error("Invalid task index!")
             raise IndexError("Invalid task index!")

@@ -2,7 +2,7 @@ from src.python.todo import TodoList
 import os
 import unittest
 from datetime import datetime
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch, call, PropertyMock
 import logging
 from src.python.database import DatabaseError
 
@@ -537,3 +537,79 @@ class TestTodoListUpdateTask(BaseTodoListTest):
         
         self.mock_db.update_task.assert_called_once_with(1, **updates)
         self.todo_list.refresh_tasks.assert_called_once()
+
+class TestTodoListDeleteTask(BaseTodoListTest):
+    """Test suite for delete_task method of TodoList class."""
+
+    def setUp(self):
+        super().setUp()
+
+    def test_delete_task_successful(self):
+        """Verify successful task deletion."""
+        # Setup test data
+        test_tasks = [
+            (1, "Task 1", None, None, None, None),
+            (2, "Task 2", None, None, None, None)
+        ]
+        self.todo_list.tasks = test_tasks
+        
+        # Mock get_task to return task data
+        self.mock_db.get_task.return_value = test_tasks[0]
+        self.todo_list.refresh_tasks = Mock()
+
+        # Execute test
+        self.todo_list.delete_task(0)
+
+        # Verify behavior
+        self.mock_db.delete_task.assert_called_once_with(1)
+        self.todo_list.refresh_tasks.assert_called_once()
+        self.mock_db.get_task.assert_called_once_with(1)
+
+    def test_delete_task_invalid_index(self):
+        """Verify that delete_task raises IndexError for invalid index."""
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(IndexError) as context:
+                self.todo_list.delete_task(-1)
+                
+            self.assertIn("Invalid task index", str(context.exception))
+            mock_log_error.assert_called_once_with("Invalid task index!")
+
+    def test_delete_task_database_error(self):
+        """Verify database error handling during task deletion."""
+        # Setup test data
+        test_tasks = [(1, "Task 1")]
+        self.todo_list.tasks = test_tasks
+        
+        # Mock get_task to return task data
+        self.mock_db.get_task.return_value = test_tasks[0]
+        
+        # Configure mock for database error
+        self.mock_db.delete_task.side_effect = DatabaseError("Database error", code=1)
+
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.delete_task(0)
+                
+            self.assertIn("Database error", str(context.exception))
+            mock_log_error.assert_called_once()
+            self.mock_db.get_task.assert_called_once_with(1)
+
+    def test_delete_task_timeout_error(self):
+        """Verify timeout error handling during task deletion."""
+        # Setup test data 
+        test_tasks = [(1, "Task 1")]
+        self.todo_list.tasks = test_tasks
+        
+        # Mock get_task to return task data
+        self.mock_db.get_task.return_value = test_tasks[0]
+        
+        # Configure mock for timeout
+        self.mock_db.delete_task.side_effect = TimeoutError("Connection timeout")
+
+        with patch('logging.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.delete_task(0)
+                
+            self.assertIn("Connection timeout", str(context.exception))
+            mock_log_error.assert_called_once()
+            self.mock_db.get_task.assert_called_once_with(1)
