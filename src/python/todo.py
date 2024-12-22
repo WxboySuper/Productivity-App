@@ -102,9 +102,16 @@ class TodoList:
         """
         if 0 <= task_index < len(self.tasks):
             task_id = self.tasks[task_index][0]
-            self.db.mark_completed(task_id)
-            self.refresh_tasks()
-            log.info("Task marked as completed!")
+            try:
+                self.db.mark_completed(task_id)
+                self.refresh_tasks()
+                log.info("Task marked as completed!")
+            except TimeoutError as e:
+                log.error("Timeout while marking task as completed: %s", str(e))
+                raise RuntimeError(f"Connection timeout: {e}") from e
+            except DatabaseError as e:
+                log.error("Database error while marking task as completed: %s", str(e))
+                raise RuntimeError(f"Database error: {str(e)}") from e
         else:
             log.error("Invalid task index!")
             raise IndexError("Invalid task index!")
