@@ -15,9 +15,9 @@ def get_tasks():
 @app.route('/tasks', methods=['POST'])
 def create_task():
     try:
-        task_data = request.get_json()
+        task_data = request.get_json(silent=True)
         if not task_data:
-            raise BadRequest('No data provided')
+            return jsonify({'error': 'No data provided'}), 400
 
         # Validate required fields
         if 'title' not in task_data:
