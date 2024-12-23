@@ -95,7 +95,7 @@ class TodoDatabase:
                 self._conn.close()
                 self._conn = None
         except Exception as e:
-            log.error("Error closing database connection: %s", str(e))
+            log.error("Error closing database connection: %s: %s", type(e).__name__, str(e))
 
     @staticmethod
     def init_database(conn):
@@ -542,8 +542,8 @@ class TodoDatabase:
 
                 try:
                     cursor.execute(query, (task_id, label_id))
-                except sqlite3.IntegrityError:
-                    raise DatabaseError("Task-label link already exists", "LINK_EXISTS")
+                except sqlite3.IntegrityError as err:
+                    raise DatabaseError("Task-label link already exists", "LINK_EXISTS") from err
 
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
