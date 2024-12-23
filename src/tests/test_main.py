@@ -17,9 +17,9 @@ class TestFlaskAPI(unittest.TestCase):
                 [1, "Task 1", None, None, None, None],
                 [2, "Task 2", None, "Work", None, 1]
             ]
-            
+
             response = self.app.get('/tasks')
-            
+
             self.assertEqual(response.status_code, 200)
             self.assertEqual(json.loads(response.data), mock_todo.tasks)
 
