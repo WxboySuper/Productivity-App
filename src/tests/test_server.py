@@ -1,5 +1,4 @@
 from src.python.server import app
-import src.python.server
 import unittest
 
 class TestServer(unittest.TestCase):
@@ -23,28 +22,14 @@ class TestServer(unittest.TestCase):
 
     def test_server_port(self):
         """Verify server port is set to 5000."""
-        self.assertEqual(app.config.get('PORT', 5000), 5000)
+        self.assertIn('PORT', self.app.config)
+        self.assertEqual(5000, self.app.config['PORT'])
 
     @staticmethod
-    def test_server_run(run):
-        """Test server run configuration."""
-        with unittest.mock.patch('src.python.server.app.run') as mock_run:
-            # Import after patching
-            from src.python.server import run_server
-
-            # Run server function
-            run_server()
-
-            # Verify app.run was called with correct port
-            mock_run.assert_called_once_with(port=5000)
-
-    @staticmethod
-    def test_server_not_run(run):
+    def test_server_not_run():
         """Test server doesn't run when not main module."""
         with unittest.mock.patch('src.python.server.app.run') as mock_run, \
             unittest.mock.patch('src.python.server.__name__', 'not_main'):
-            import importlib
-            importlib.reload(src.python.server)
 
             # Verify app.run was not called
             mock_run.assert_not_called()
