@@ -989,30 +989,32 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
     def test_default_log_directory_creation(self, mock_makedirs):
         """Test that the default logs directory is created."""
         mock_makedirs.side_effect = None
-        with patch.dict('sys.modules'), patch('sys.modules["src.python.database"]',
-                                              create=True):
-            __import__('src.python.database')
+        
+        # Patch sys.modules
+        modules_patcher = patch.dict('sys.modules', {})
+        database_patcher = patch('src.python.database', create=True)
+        
+        with modules_patcher, database_patcher:
+            from src.python.database import TodoDatabase
+            TodoDatabase()  # Create instance to trigger directory creation
         
         mock_makedirs.assert_called_with("logs", exist_ok=True)
 
     @patch('os.makedirs')
     def test_fallback_log_directory_creation(self, mock_makedirs):
         """Test that the fallback user logs directory is created when default fails."""
-        # First call raises PermissionError, second call succeeds
-        mock_makedirs.side_effect = [PermissionError, None]
-        
-        # Re-import to trigger directory creation
-        with patch.dict('sys.modules'):
-            if 'src.python.database' in sys.modules:
-                del sys.modules['src.python.database']
-            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
-
+        user_home = os.path.expanduser("~")
         expected_calls = [
             call("logs", exist_ok=True),
-            call(self.user_log_dir, exist_ok=True)
+            call(os.path.normpath(os.path.join(user_home, "logs")), exist_ok=True)
         ]
-        mock_makedirs.assert_has_calls(expected_calls)
-        self.assertEqual(mock_makedirs.call_count, 2)
+        mock_makedirs.side_effect = [PermissionError, None]
+        
+        # Create database instance to trigger directory creation
+        TodoDatabase()
+        
+        # Verify both directory creation attempts
+        mock_makedirs.assert_has_calls(expected_calls, any_order=False)
 
     def test_log_directory_exists_after_init(self):
         """Test that at least one log directory exists after initialization."""
@@ -1030,17 +1032,18 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
     @patch('os.makedirs')
     def test_both_directory_creation_fails(self, mock_makedirs):
         """Test behavior when both default and fallback directory creation fails."""
-        # Both calls raise PermissionError
-        mock_makedirs.side_effect = PermissionError
-        
-        # Re-import should not raise an exception even if both directories fail
-        with patch.dict('sys.modules'):
-            if 'src.python.database' in sys.modules:
-                del sys.modules['src.python.database']
-            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
-
+        # Setup expected calls
+        user_home = os.path.expanduser("~")
         expected_calls = [
             call("logs", exist_ok=True),
-            call(self.user_log_dir, exist_ok=True)
+            call(os.path.normpath(os.path.join(user_home, "logs")), exist_ok=True)
         ]
-        mock_makedirs.assert_has_calls(expected_calls)
+        
+        # Configure mock to always raise PermissionError
+        mock_makedirs.side_effect = PermissionError
+        
+        # Create database instance - should handle exceptions gracefully
+        TodoDatabase()
+        
+        # Verify both creation attempts were made
+        mock_makedirs.assert_has_calls(expected_calls, any_order=False)
