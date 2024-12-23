@@ -64,31 +64,22 @@ class TodoDatabase:
     """
 
     def __init__(self, db_file="todo.db"):
-        """
-        Initializes a TodoDatabase instance with the specified database file path.
-
-        Args:
-            db_file (str, optional): Path to SQLite database file. Defaults to "todo.db"
-
-        Raises:
-            DatabaseError: If path contains invalid characters or permissions issues
-            sqlite3.OperationalError: If database connection fails
-        """
         if db_file is None:
-            db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
+            db_file = os.getenv('DB_PATH', 'todo.db')
 
-        # Validate path
-        if not all(c.isprintable() and c not in '<>:"|?&' for c in db_file):
+        # Windows invalid characters
+        invalid_chars = '<>"|?*&'
+        if any(char in str(db_file) for char in invalid_chars):
             raise DatabaseError("Invalid characters in database path", "INVALID_PATH")
-
+            
+        self.db_file = db_file
         db_dir = os.path.dirname(os.path.abspath(db_file))
+        
         if not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
         if not os.access(db_dir, os.W_OK):
             raise PermissionError(f"No write permission for database directory: {db_dir}")
 
-        self.db_file = db_file
-        # Initialize database but don't keep connection open
         with sqlite3.connect(self.db_file) as conn:
             self.init_database(conn)
         self._conn = None
