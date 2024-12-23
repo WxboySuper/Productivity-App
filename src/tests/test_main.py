@@ -109,7 +109,7 @@ class TestFlaskAPI(unittest.TestCase):
         """Test GET /tasks when an error occurs"""
         with patch('src.python.main.todo') as mock_todo:
             # Mock the tasks property to raise an exception
-            type(mock_todo).tasks = property(lambda x: exec('raise Exception("Test error")'))
+            type(mock_todo).tasks = property(lambda x: (_ for _ in ()).throw(Exception("Test error")))
             
             response = self.app.get('/tasks')
             
