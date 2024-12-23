@@ -945,7 +945,8 @@ class TestTodoDatabaseDel(BaseTodoDatabaseTest):
         
         # Verify error was logged
         mock_log_error.assert_called_once_with(
-            "Error closing database connection: %s",
+            "Error closing database connection: %s: %s",
+            "Error",
             "Test error"
         )
 
