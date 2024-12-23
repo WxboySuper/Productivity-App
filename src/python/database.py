@@ -71,10 +71,10 @@ class TodoDatabase:
         invalid_chars = '<>"|?*&'
         if any(char in str(db_file) for char in invalid_chars):
             raise DatabaseError("Invalid characters in database path", "INVALID_PATH")
-            
+
         self.db_file = db_file
         db_dir = os.path.dirname(os.path.abspath(db_file))
-        
+
         if not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
         if not os.access(db_dir, os.W_OK):

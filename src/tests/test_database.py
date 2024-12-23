@@ -827,9 +827,6 @@ class TestTodoDatabaseInit(BaseTodoDatabaseTest):
         db = TodoDatabase(test_db)
         self.assertTrue(os.path.exists(test_dir))
         self.assertTrue(os.path.exists(test_db))
-        
-        # Close connection before cleanup
-        del db
 
         # skipcq: PYL-W0612
         db = TodoDatabase(test_db)
