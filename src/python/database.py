@@ -2,7 +2,11 @@ import sqlite3
 import os
 import logging as log
 
-os.makedirs("logs", exist_ok=True)
+try:
+    os.makedirs("logs", exist_ok=True)
+except PermissionError:
+    user_log_dir = os.path.expanduser("~/logs")
+    os.makedirs(user_log_dir, exist_ok=True)
 
 log.basicConfig(
     level=log.INFO,
