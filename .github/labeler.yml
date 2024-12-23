@@ -9,6 +9,10 @@ GitHub-Action:
 python:
 - changed-files:
   - any-glob-to-any-file: 'src/python/*'
+  - any-glob-to-any-file: '**/*.py'
+  - any-glob-to-any-file: '**/requirements.txt'
+  - any-glob-to-any-file: '**/setup.py'
+  - any-glob-to-any-file: '**/pyproject.toml'
 
 javascript:
 - changed-files:
