@@ -56,22 +56,26 @@ class TodoDatabase:
         """
         Initializes a TodoDatabase instance with the specified database file path.
 
+        Args:
+            db_file (str, optional): Path to SQLite database file. Defaults to "todo.db"
+
         Raises:
+            DatabaseError: If path contains invalid characters or permissions issues
             sqlite3.OperationalError: If database connection fails
-            PermissionError: If no write permission for database directory
         """
         if db_file is None:
             db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
-        db_dir = os.path.dirname(os.path.abspath(db_file))  
-        if not os.path.exists(db_dir):  
-            os.makedirs(db_dir, exist_ok=True)  
-        if not os.access(db_dir, os.W_OK):  
+
+        db_dir = os.path.dirname(os.path.abspath(db_file))
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+        if not os.access(db_dir, os.W_OK):
             raise PermissionError(f"No write permission for database directory: {db_dir}")
+            
         self.db_file = db_file
         # Initialize database but don't keep connection open
         with sqlite3.connect(self.db_file) as conn:
             self.init_database(conn)
-        self.db_file = db_file
         self._conn = None
 
     def __del__(self):
@@ -81,10 +85,11 @@ class TodoDatabase:
         as this method is called during garbage collection.
         """
         try:
-            if hasattr(self, 'conn') and self.conn:
-                self.conn.close()
+            if hasattr(self, '_conn') and self._conn:
+                self._conn.close()
+                self._conn = None
         except Exception as e:
-            log.error("Error closing database connection: %s", e)
+            log.error("Error closing database connection: %s", str(e))
 
     @staticmethod
     def init_database(conn):
