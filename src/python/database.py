@@ -67,10 +67,13 @@ class TodoDatabase:
         if db_file is None:
             db_file = os.getenv('DB_PATH', 'todo.db')
 
-        # Windows invalid characters
-        invalid_chars = '<>"|?*&'
+        # Platform-specific invalid characters
+        invalid_chars = '<>"|?*&:\\/' if os.name == 'nt' else '\0'
         if any(char in str(db_file) for char in invalid_chars):
-            raise DatabaseError("Invalid characters in database path", "INVALID_PATH")
+            raise DatabaseError(
+                f"Invalid characters in database path. Found: {[c for c in str(db_file) if c in invalid_chars]}",
+                "INVALID_PATH"
+            )
 
         self.db_file = db_file
         db_dir = os.path.dirname(os.path.abspath(db_file))
