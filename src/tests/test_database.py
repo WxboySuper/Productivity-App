@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, call
 import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
@@ -7,6 +7,7 @@ import os
 import time
 import warnings
 from contextlib import suppress
+import sys
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
@@ -928,3 +929,90 @@ class TestTodoDatabaseDel(BaseTodoDatabaseTest):
         delattr(self.db, '_conn')
         # This should not raise any exceptions
         del self.db
+        
+class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
+    """Test suite for log directory creation functionality."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_logs.db')
+
+    def setUp(self):
+        # Remove log directories if they exist
+        self.default_log_dir = "logs"
+        self.user_log_dir = os.path.expanduser("~/logs")
+        self._cleanup_log_dirs()
+        super().setUp()
+
+    def tearDown(self):
+        self._cleanup_log_dirs()
+        super().tearDown()
+
+    def _cleanup_log_dirs(self):
+        """Helper method to clean up log directories."""
+        for log_dir in [self.default_log_dir, self.user_log_dir]:
+            if os.path.exists(log_dir):
+                try:
+                    os.rmdir(log_dir)
+                except OSError:
+                    pass  # Directory might not be empty or might be used by other processes
+
+    @patch('os.makedirs')
+    def test_default_log_directory_creation(self, mock_makedirs):
+        """Test that the default logs directory is created."""
+        mock_makedirs.side_effect = None
+        # Re-import to trigger directory creation
+        with patch.dict('sys.modules'):
+            if 'src.python.database' in sys.modules:
+                del sys.modules['src.python.database']
+            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+        
+        mock_makedirs.assert_called_with("logs", exist_ok=True)
+
+    @patch('os.makedirs')
+    def test_fallback_log_directory_creation(self, mock_makedirs):
+        """Test that the fallback user logs directory is created when default fails."""
+        # First call raises PermissionError, second call succeeds
+        mock_makedirs.side_effect = [PermissionError, None]
+        
+        # Re-import to trigger directory creation
+        with patch.dict('sys.modules'):
+            if 'src.python.database' in sys.modules:
+                del sys.modules['src.python.database']
+            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+
+        expected_calls = [
+            call("logs", exist_ok=True),
+            call(self.user_log_dir, exist_ok=True)
+        ]
+        mock_makedirs.assert_has_calls(expected_calls)
+        self.assertEqual(mock_makedirs.call_count, 2)
+
+    def test_log_directory_exists_after_init(self):
+        """Test that at least one log directory exists after initialization."""
+        # Re-import to trigger directory creation
+        with patch.dict('sys.modules'):
+            if 'src.python.database' in sys.modules:
+                del sys.modules['src.python.database']
+            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+
+        self.assertTrue(
+            os.path.exists(self.default_log_dir) or os.path.exists(self.user_log_dir),
+            "Neither default nor user log directory exists"
+        )
+
+    @patch('os.makedirs')
+    def test_both_directory_creation_fails(self, mock_makedirs):
+        """Test behavior when both default and fallback directory creation fails."""
+        # Both calls raise PermissionError
+        mock_makedirs.side_effect = PermissionError
+        
+        # Re-import should not raise an exception even if both directories fail
+        with patch.dict('sys.modules'):
+            if 'src.python.database' in sys.modules:
+                del sys.modules['src.python.database']
+            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+
+        expected_calls = [
+            call("logs", exist_ok=True),
+            call(self.user_log_dir, exist_ok=True)
+        ]
+        mock_makedirs.assert_has_calls(expected_calls)
