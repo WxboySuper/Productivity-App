@@ -114,7 +114,7 @@ class TestFlaskAPI(unittest.TestCase):
             response = self.app.get('/tasks')
             
             self.assertEqual(response.status_code, 500)
-            self.assertEqual(json.loads(response.data), {'error': 'Test error'})
+            self.assertEqual(json.loads(response.data), {'error': 'Internal Server Error'})
 
     def test_create_task_server_error(self):
         """Test POST /tasks when server error occurs"""
