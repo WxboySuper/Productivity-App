@@ -7,7 +7,6 @@ import os
 import time
 import warnings
 from contextlib import suppress
-import shutil
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):

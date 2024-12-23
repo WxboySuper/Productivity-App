@@ -1,7 +1,6 @@
 import sqlite3
 import os
 import logging as log
-from logging.handlers import RotatingFileHandler
 
 os.makedirs("logs", exist_ok=True)
 
@@ -71,7 +70,7 @@ class TodoDatabase:
             os.makedirs(db_dir, exist_ok=True)
         if not os.access(db_dir, os.W_OK):
             raise PermissionError(f"No write permission for database directory: {db_dir}")
-            
+
         self.db_file = db_file
         # Initialize database but don't keep connection open
         with sqlite3.connect(self.db_file) as conn:
