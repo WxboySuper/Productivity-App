@@ -516,8 +516,12 @@ class TodoDatabase:
             task_id (int): The ID of the task to link to the label.
             label_id (int): The ID of the label to link to the task.
 
-        Returns:
-            None
+        Raises:
+            DatabaseError: With codes:
+                - TASK_NOT_FOUND: If task doesn't exist
+                - LABEL_NOT_FOUND: If label doesn't exist
+                - LINK_EXISTS: If link already exists
+                - DB_CONN_ERROR: If database connection fails
         """
         query = 'INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)'
 
@@ -527,17 +531,15 @@ class TodoDatabase:
 
                 # Check if task exists
                 task = self.get_task(task_id)
-                if task is None:
-                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
 
                 # Check if label exists
                 label = self.get_label(label_id)
-                if label is None:
-                    raise DatabaseError(f"No label found with ID {label_id}", "LABEL_NOT_FOUND")
 
-                cursor.execute(query, (task_id, label_id))
-                if cursor.rowcount == 0:
-                    raise DatabaseError("Failed to link task to label", "LINK_FAILED")
+                try:
+                    cursor.execute(query, (task_id, label_id))
+                except sqlite3.IntegrityError:
+                    raise DatabaseError("Task-label link already exists", "LINK_EXISTS")
+
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e

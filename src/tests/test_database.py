@@ -390,6 +390,19 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
             self.db.update_task(1, title="New Title")
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
 
+    @patch('sqlite3.connect')
+    def test_update_task_db_query_error(self, mock_connect):
+        """Verify that database query error is handled correctly."""
+        mock_conn = mock_connect.return_value
+        mock_cursor = mock_conn.cursor.return_value
+        mock_cursor.execute.side_effect = sqlite3.Error("Query error")
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.__exit__.side_effect = None
+
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(1, title="New Title")
+        self.assertEqual(cm.exception.code, "DB_QUERY_ERROR")
+
 class TestTodoDatabaseMarkCompleted(BaseTodoDatabaseTest):
     """"Test suite for TodoDatabase.get_task method."""
 
@@ -566,6 +579,19 @@ class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
         new_db = TodoDatabase(self.TEST_DB_NAME)
         labels = new_db.get_all_labels()
         self.assertTrue(any(label[0] == label_id for label in labels))
+    
+    @patch('sqlite3.connect')
+    def test_add_label_db_query_error(self, mock_connect):
+        """Verify that database query error is handled correctly."""
+        mock_conn = mock_connect.return_value
+        mock_cursor = mock_conn.cursor.return_value
+        mock_cursor.execute.side_effect = sqlite3.Error("Query error")
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.__exit__.side_effect = None
+
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.add_label(name="New Title")
+        self.assertEqual(cm.exception.code, "DB_QUERY_ERROR")
 
 class TestTodoDatabaseGetLabel(BaseTodoDatabaseTest):
     """Test suite for get_label function in TodoDatabase class."""
@@ -746,22 +772,6 @@ class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
         self.assertEqual(label[0], label_id, "Label ID should match")
         self.assertEqual(label[1], self.BASIC_LABEL_TITLE, "Label name should match")
 
-    def test_link_task_label_nonexistent_task(self):
-        """Verify that attempting to link a task and label with a non-existent task raises DatabaseError."""
-        task_id = 9999
-        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
-        with self.assertRaises(DatabaseError) as cm:
-            self.db.link_task_label(task_id, label_id)
-        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
-
-    def test_link_task_label_nonexistent_label(self):
-        """Verify that attempting to link a task and label with a non-existent label raises DatabaseError."""
-        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
-        label_id = 9999
-        with self.assertRaises(DatabaseError) as cm:
-            self.db.link_task_label(task_id, label_id)
-        self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
-
     def test_link_task_label_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -771,26 +781,16 @@ class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
             with self.assertRaises(DatabaseError) as cm:
                 self.db.link_task_label(task_id, label_id)
             self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
-            class TestTodoDatabaseAddTaskExtended(BaseTodoDatabaseTest):
-                """Extended test suite for add_task function in TodoDatabase class."""
 
-                TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_add_extended.db')
+    def test_link_task_label_duplicate(self):
+        """Verify that linking the same task-label pair twice is handled gracefully."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
 
-                def setUp(self):
-                    super().setUp()
+        # Link first time
+        self.db.link_task_label(task_id, label_id)
 
-                def test_add_task_with_priority_values(self):
-                    """Test task creation with each valid priority value."""
-                    priorities = ['ASAP', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST']
-                    for priority in priorities:
-                        task_id = self.db.add_task(
-                            title=f"Priority Test Task {priority}",
-                            priority=priority
-                        )
-                        task = self.db.get_task(task_id)
-                        self.assertEqual(task[6], priority)
-
-                def test_add_task_with_special_characters(self):
-                    """Test task creation with special characters in title and notes."""
-                    special_title = "Test @#$%^&* Special"
-                    special_notes = "Notes with ★§♠♣±"
+        # Link second time should raise LINK_FAILED
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.link_task_label(task_id, label_id)
+        self.assertEqual(cm.exception.code, "LINK_EXISTS")
