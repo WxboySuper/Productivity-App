@@ -130,7 +130,7 @@ class TestFlaskAPI(unittest.TestCase):
                                     content_type='application/json')
             
             self.assertEqual(response.status_code, 500)
-            self.assertEqual(json.loads(response.data), {'error': 'Internal server error'})
+            self.assertEqual(json.loads(response.data), {'error': 'Internal Server Error'})
 
     def test_create_task_no_data(self):
         """Test POST /tasks with no data scenarios"""
