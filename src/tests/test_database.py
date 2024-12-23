@@ -8,6 +8,7 @@ import time
 import warnings
 from contextlib import suppress
 import sys
+import shutil
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
@@ -802,21 +803,33 @@ class TestTodoDatabaseInit(BaseTodoDatabaseTest):
     TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_init.db')
 
     def setUp(self):
-        super().setUp()
-    
+        """Set up test environment."""
+        self.TEST_DB_DIR = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_db')
+        os.makedirs(self.TEST_DB_DIR, exist_ok=True)
+
     def tearDown(self):
-        super().tearDown()
+        """Clean up test environment."""
+        try:
+            shutil.rmtree(self.TEST_DB_DIR, ignore_errors=True)
+        except Exception:
+            pass
 
     def test_init_creates_directory(self):
         """Verify that __init__ creates database directory if it doesn't exist."""
-        test_dir = os.path.join(self.TEST_DB_DIR, 'new_dir')
-        test_db = os.path.join(test_dir, 'new.db')
+        test_dir = os.path.join(self.TEST_DB_DIR, 'newdir1')
+        test_db = os.path.join(test_dir, 'test.db')
         
-        # Clean up any existing directory
+        # Ensure clean state
         if os.path.exists(test_dir):
-            if os.path.exists(test_db):
-                os.remove(test_db)
-            os.rmdir(test_dir)
+            shutil.rmtree(test_dir)
+            
+        # Test directory creation
+        db = TodoDatabase(test_db)
+        self.assertTrue(os.path.exists(test_dir))
+        self.assertTrue(os.path.exists(test_db))
+        
+        # Close connection before cleanup
+        del db
 
         # skipcq: PYL-W0612
         db = TodoDatabase(test_db)
@@ -856,16 +869,36 @@ class TestTodoDatabaseInit(BaseTodoDatabaseTest):
         self.assertEqual(db.db_file, 'todo.db')
 
     @patch('os.access')
-    def test_init_no_write_permission(self, mock_access):
+    @patch('os.makedirs')
+    def test_init_no_write_permission(self, mock_makedirs, mock_access):
         """Verify that __init__ raises PermissionError when no write permission."""
         mock_access.return_value = False
+        mock_makedirs.side_effect = None
+        
         with self.assertRaises(PermissionError):
             TodoDatabase(self.TEST_DB_NAME)
+        
+        mock_access.assert_called_once()
 
     def test_init_closes_connection(self):
         """Verify that __init__ closes the database connection after initialization."""
+        print("DB_NAME: ", self.TEST_DB_NAME)
         db = TodoDatabase(self.TEST_DB_NAME)
         self.assertIsNone(db._conn)
+
+    def test_init_invalid_path_characters(self):
+        """Verify that __init__ raises DatabaseError for invalid path characters."""
+        invalid_paths = [
+            'test<.db',
+            'test>.db',
+            'test"|.db',
+            'test?.db',
+            'test&.db'
+        ]
+        for path in invalid_paths:
+            with self.assertRaises(DatabaseError) as cm:
+                TodoDatabase(path)
+            self.assertEqual(cm.exception.code, "INVALID_PATH")
 
 class TestTodoDatabaseDel(BaseTodoDatabaseTest):
     """Test suite for TodoDatabase.__del__ method."""
