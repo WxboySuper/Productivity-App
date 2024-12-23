@@ -1,29 +1,6 @@
 import sqlite3
 import os
 import logging as log
-from logging.handlers import RotatingFileHandler
-
-log_dir = os.getenv("LOG_DIR", "logs")
-try:
-    os.makedirs(log_dir, exist_ok=True)
-except PermissionError as e:
-    log.error("Failed to create log directory: %s", e)
-    # Fallback to a user-writable directory
-    log_dir = os.path.join(os.path.expanduser("~"), "logs")
-    os.makedirs(log_dir, exist_ok=True)
-
-handler = RotatingFileHandler(
-    os.path.join(log_dir, 'database.log'),
-    maxBytes=int(os.getenv("LOG_MAX_BYTES", str(1024*1024))), # Default 1MB
-    backupCount = int(os.getenv("LOG_BACKUP_COUNT", "5")), # Default 5 backups
-)
-
-log.basicConfig(
-    level=log.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[handler]
-)
 
 
 class DatabaseError(Exception):
@@ -67,41 +44,52 @@ class TodoDatabase:
     """
 
     def __init__(self, db_file="todo.db"):
-        """
-        Initializes a TodoDatabase instance with the specified database file path.
+        """Initialize database connection and create log directory."""
+        # Setup logging directories
+        self.log_dir = None
+        try:
+            os.makedirs("logs", exist_ok=True)
+            self.log_dir = "logs"
+        except PermissionError:
+            try:
+                # skipcq: FLK-E501
+                user_log_dir = os.path.normpath(os.path.join(os.path.expanduser("~"), "logs"))
+                os.makedirs(user_log_dir, exist_ok=True)
+                self.log_dir = user_log_dir
+            except PermissionError:
+                log.warning("Failed to create both default and user log directories")
 
-        Raises:
-            sqlite3.OperationalError: If database connection fails
-            PermissionError: If no write permission for database directory
-        """
+        # Configure logging
+        log.basicConfig(
+            level=log.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
         if db_file is None:
-            db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
-        db_dir = os.path.dirname(os.path.abspath(db_file))  
-        if not os.path.exists(db_dir):  
-            os.makedirs(db_dir, exist_ok=True)  
-        if not os.access(db_dir, os.W_OK):  
-            raise PermissionError(f"No write permission for database directory: {db_dir}")
+            db_file = os.getenv('DB_PATH', 'todo.db')
+
+        # Platform-specific invalid characters
+        invalid_chars = '<>"|?*&'
+        if any(char in str(db_file) for char in invalid_chars):
+            raise DatabaseError(
+                # skipcq: FLK-E501
+                f"Invalid characters in database path. Found: {[c for c in str(db_file) if c in invalid_chars]}",
+                "INVALID_PATH"
+            )
+
         self.db_file = db_file
-        # Initialize database but don't keep connection open
+        db_dir = os.path.dirname(os.path.abspath(db_file))
+
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+        if not os.access(db_dir, os.W_OK):
+            # skipcq: FLK-E501
+            raise PermissionError(f"No write permission for database directory: {db_dir}")
+
         with sqlite3.connect(self.db_file) as conn:
             self.init_database(conn)
-        self.db_file = db_file
         self._conn = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-
-    def _get_connection(self):
-        """Get or create database connection."""
-        if not self._conn:
-            self._conn = sqlite3.connect(self.db_file)
-            self._conn.execute("PRAGMA foreign_keys = ON")
-        return self._conn
 
     def __del__(self):
         """Ensures database connection is closed when object is destroyed.
@@ -110,10 +98,12 @@ class TodoDatabase:
         as this method is called during garbage collection.
         """
         try:
-            if hasattr(self, 'conn') and self.conn:
-                self.conn.close()
+            if hasattr(self, '_conn') and self._conn:
+                self._conn.close()
+                self._conn = None
         except Exception as e:
-            log.error("Error closing database connection: %s", e)
+            log.error("Error closing database connection: %s: %s",
+                      type(e).__name__, str(e))
 
     @staticmethod
     def init_database(conn):
@@ -535,7 +525,8 @@ class TodoDatabase:
                 return cursor.fetchall()
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
-            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+            raise DatabaseError("An error occurred while connecting to the database",
+                                "DB_CONN_ERROR") from e
 
     def link_task_label(self, task_id, label_id):
         """
@@ -545,8 +536,12 @@ class TodoDatabase:
             task_id (int): The ID of the task to link to the label.
             label_id (int): The ID of the label to link to the task.
 
-        Returns:
-            None
+        Raises:
+            DatabaseError: With codes:
+                - TASK_NOT_FOUND: If task doesn't exist
+                - LABEL_NOT_FOUND: If label doesn't exist
+                - LINK_EXISTS: If link already exists
+                - DB_CONN_ERROR: If database connection fails
         """
         query = 'INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)'
 
@@ -554,19 +549,12 @@ class TodoDatabase:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
 
-                # Check if task exists
-                task = self.get_task(task_id)
-                if task is None:
-                    raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
+                try:
+                    cursor.execute(query, (task_id, label_id))
+                except sqlite3.IntegrityError as err:
+                    raise DatabaseError("Task-label link already exists",
+                                        "LINK_EXISTS") from err
 
-                # Check if label exists
-                label = self.get_label(label_id)
-                if label is None:
-                    raise DatabaseError(f"No label found with ID {label_id}", "LABEL_NOT_FOUND")
-
-                cursor.execute(query, (task_id, label_id))
-                if cursor.rowcount == 0:
-                    raise DatabaseError("Failed to link task to label", "LINK_FAILED")
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock, call
 import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
@@ -7,6 +7,8 @@ import os
 import time
 import warnings
 from contextlib import suppress
+import sys
+import shutil
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
@@ -207,6 +209,29 @@ class TestTodoDatabaseAddTask(BaseTodoDatabaseTest):
             self.db.add_task(self.BASIC_TASK_TITLE, priority=self.INVALID_PRIORITY)
         self.assertEqual(cm.exception.code, "INVALID_PRIORITY")
 
+    def test_add_task_db_conn_error(self):
+        """Verify that a database connection error is handled correctly."""
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Unable to connect")
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.add_task(self.BASIC_TASK_TITLE)
+            self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+    def test_add_task_db_query_error(self):
+        """Verify that a database query error is handled correctly."""
+        with patch('sqlite3.connect') as mock_connect:
+            mock_conn = mock_connect.return_value
+            mock_cursor = mock_conn.cursor.return_value
+            # Mock the execute method to raise a SQLite error
+            mock_cursor.execute.side_effect = sqlite3.Error("Query error")
+            # Mock the __enter__ and __exit__ methods for context manager
+            mock_conn.__enter__.return_value = mock_conn
+            mock_conn.__exit__.side_effect = None
+            
+            with self.assertRaises(DatabaseError) as cm:
+                self.db.add_task(self.BASIC_TASK_TITLE)
+            self.assertEqual(cm.exception.code, "DB_QUERY_ERROR")
+
 class TestTodoDatabaseDeleteTask(BaseTodoDatabaseTest):
     """Test suite for TodoDatabase class delete_task method."""
 
@@ -366,6 +391,19 @@ class TestTodoDatabaseUpdateTask(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.update_task(1, title="New Title")
         self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+    @patch('sqlite3.connect')
+    def test_update_task_db_query_error(self, mock_connect):
+        """Verify that database query error is handled correctly."""
+        mock_conn = mock_connect.return_value
+        mock_cursor = mock_conn.cursor.return_value
+        mock_cursor.execute.side_effect = sqlite3.Error("Query error")
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.__exit__.side_effect = None
+
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.update_task(1, title="New Title")
+        self.assertEqual(cm.exception.code, "DB_QUERY_ERROR")
 
 class TestTodoDatabaseMarkCompleted(BaseTodoDatabaseTest):
     """"Test suite for TodoDatabase.get_task method."""
@@ -543,6 +581,19 @@ class TestTodoDatabaseAddLabel(BaseTodoDatabaseTest):
         new_db = TodoDatabase(self.TEST_DB_NAME)
         labels = new_db.get_all_labels()
         self.assertTrue(any(label[0] == label_id for label in labels))
+    
+    @patch('sqlite3.connect')
+    def test_add_label_db_query_error(self, mock_connect):
+        """Verify that database query error is handled correctly."""
+        mock_conn = mock_connect.return_value
+        mock_cursor = mock_conn.cursor.return_value
+        mock_cursor.execute.side_effect = sqlite3.Error("Query error")
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.__exit__.side_effect = None
+
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.add_label(name="New Title")
+        self.assertEqual(cm.exception.code, "DB_QUERY_ERROR")
 
 class TestTodoDatabaseGetLabel(BaseTodoDatabaseTest):
     """Test suite for get_label function in TodoDatabase class."""
@@ -723,22 +774,6 @@ class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
         self.assertEqual(label[0], label_id, "Label ID should match")
         self.assertEqual(label[1], self.BASIC_LABEL_TITLE, "Label name should match")
 
-    def test_link_task_label_nonexistent_task(self):
-        """Verify that attempting to link a task and label with a non-existent task raises DatabaseError."""
-        task_id = 9999
-        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
-        with self.assertRaises(DatabaseError) as cm:
-            self.db.link_task_label(task_id, label_id)
-        self.assertEqual(cm.exception.code, "TASK_NOT_FOUND")
-
-    def test_link_task_label_nonexistent_label(self):
-        """Verify that attempting to link a task and label with a non-existent label raises DatabaseError."""
-        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
-        label_id = 9999
-        with self.assertRaises(DatabaseError) as cm:
-            self.db.link_task_label(task_id, label_id)
-        self.assertEqual(cm.exception.code, "LABEL_NOT_FOUND")
-
     def test_link_task_label_db_connection_error(self):
         """Verify that a database connection error is handled correctly."""
         task_id = self.db.add_task(self.BASIC_TASK_TITLE)
@@ -748,3 +783,267 @@ class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
             with self.assertRaises(DatabaseError) as cm:
                 self.db.link_task_label(task_id, label_id)
             self.assertEqual(cm.exception.code, "DB_CONN_ERROR")
+
+    def test_link_task_label_duplicate(self):
+        """Verify that linking the same task-label pair twice is handled gracefully."""
+        task_id = self.db.add_task(self.BASIC_TASK_TITLE)
+        label_id = self.db.add_label(self.BASIC_LABEL_TITLE)
+
+        # Link first time
+        self.db.link_task_label(task_id, label_id)
+
+        # Link second time should raise LINK_FAILED
+        with self.assertRaises(DatabaseError) as cm:
+            self.db.link_task_label(task_id, label_id)
+        self.assertEqual(cm.exception.code, "LINK_EXISTS")
+
+class TestTodoDatabaseInit(BaseTodoDatabaseTest):
+    """Test suite for TodoDatabase.__init__ method."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_init.db')
+
+    def setUp(self):
+        """Set up test environment."""
+        self.TEST_DB_DIR = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_db')
+        os.makedirs(self.TEST_DB_DIR, exist_ok=True)
+
+    def tearDown(self):
+        """Clean up test environment."""
+        try:
+            shutil.rmtree(self.TEST_DB_DIR, ignore_errors=True)
+        except Exception:
+            pass
+
+    def test_init_creates_directory(self):
+        """Verify that __init__ creates database directory if it doesn't exist."""
+        test_dir = os.path.join(self.TEST_DB_DIR, 'newdir1')
+        test_db = os.path.join(test_dir, 'test.db')
+        
+        # Ensure clean state
+        if os.path.exists(test_dir):
+            shutil.rmtree(test_dir)
+            
+        # Test directory creation
+        # skipcq: PYL-W0612
+        db = TodoDatabase(test_db)
+        self.assertTrue(os.path.exists(test_dir))
+        self.assertTrue(os.path.exists(test_db))
+
+        # skipcq: PYL-W0612
+        db = TodoDatabase(test_db)
+        self.assertTrue(os.path.exists(test_dir))
+        self.assertTrue(os.path.exists(test_db))
+
+    def test_init_creates_tables(self):
+        """Verify that __init__ creates all required database tables."""
+        with sqlite3.connect(self.TEST_DB_NAME) as conn:
+            cursor = conn.cursor()
+            
+            # Check tasks table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'")
+            self.assertIsNotNone(cursor.fetchone())
+            
+            # Check labels table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='labels'")
+            self.assertIsNotNone(cursor.fetchone())
+            
+            # Check task_labels table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='task_labels'")
+            self.assertIsNotNone(cursor.fetchone())
+
+    def test_init_with_env_variable(self):
+        """Verify that __init__ uses DB_PATH environment variable when db_file is None."""
+        test_db = os.path.join(self.TEST_DB_DIR, 'env_test.db')
+        os.environ['DB_PATH'] = test_db
+        try:
+            db = TodoDatabase(None)
+            self.assertEqual(db.db_file, test_db)
+        finally:
+            del os.environ['DB_PATH']
+
+    def test_init_default_path(self):
+        """Verify that __init__ uses default path when no path provided."""
+        db = TodoDatabase()
+        self.assertEqual(db.db_file, 'todo.db')
+
+    @patch('os.access')
+    @patch('os.makedirs')
+    def test_init_no_write_permission(self, mock_makedirs, mock_access):
+        """Verify that __init__ raises PermissionError when no write permission."""
+        mock_access.return_value = False
+        mock_makedirs.side_effect = None
+        
+        with self.assertRaises(PermissionError):
+            TodoDatabase(self.TEST_DB_NAME)
+        
+        mock_access.assert_called_once()
+
+    def test_init_closes_connection(self):
+        """Verify that __init__ closes the database connection after initialization."""
+        print("DB_NAME: ", self.TEST_DB_NAME)
+        db = TodoDatabase(self.TEST_DB_NAME)
+        self.assertIsNone(db._conn)
+
+    def test_init_invalid_path_characters(self):
+        """Verify that __init__ raises DatabaseError for invalid path characters."""
+        invalid_paths = [
+            'test<.db',
+            'test>.db',
+            'test"|.db',
+            'test?.db',
+            'test&.db'
+        ]
+        for path in invalid_paths:
+            with self.assertRaises(DatabaseError) as cm:
+                TodoDatabase(path)
+            self.assertEqual(cm.exception.code, "INVALID_PATH")
+
+class TestTodoDatabaseDel(BaseTodoDatabaseTest):
+    """Test suite for TodoDatabase.__del__ method."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_del.db')
+
+    def setUp(self):
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        super().setUp()
+
+    def tearDown(self):
+        if hasattr(self, 'db') and self.db is not None:
+            self.db.close()
+        super().tearDown()
+
+    def test_del_closes_connection_gracefully(self):
+        """Verify that __del__ closes database connection gracefully."""
+        # Create a connection explicitly
+        conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db._conn = conn
+
+        # Store connection object locally
+        test_conn = self.db._conn
+
+        # Delete the database instance
+        del self.db
+        self.db = None  # Ensure complete cleanup
+
+        # Verify the connection is closed by trying to use it
+        with self.assertRaises(sqlite3.ProgrammingError) as cm:
+            test_conn.execute("SELECT 1")
+        self.assertIn("Cannot operate on a closed database", str(cm.exception))
+
+    @patch('logging.error')
+    def test_del_handles_connection_error(self, mock_log_error):
+        """Verify that __del__ handles connection errors gracefully."""
+        # Create a mock connection that raises an error on close
+        mock_conn = Mock()
+        mock_conn.close.side_effect = sqlite3.Error("Test error")
+        self.db._conn = mock_conn
+        
+        # Delete the database instance
+        del self.db
+        
+        # Verify error was logged
+        mock_log_error.assert_called_once_with(
+            "Error closing database connection: %s: %s",
+            "Error",
+            "Test error"
+        )
+
+    def test_del_handles_missing_connection(self):
+        """Verify that __del__ handles case when connection doesn't exist."""
+        # Ensure no connection exists
+        self.db._conn = None
+        # This should not raise any exceptions
+        del self.db
+
+    def test_del_handles_missing_attribute(self):
+        """Verify that __del__ handles case when _conn attribute doesn't exist."""
+        # Remove the _conn attribute
+        delattr(self.db, '_conn')
+        # This should not raise any exceptions
+        del self.db
+        
+class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
+    """Test suite for log directory creation functionality."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_logs.db')
+
+    def setUp(self):
+        # Remove log directories if they exist
+        self.default_log_dir = "logs"
+        self.user_log_dir = os.path.expanduser("~/logs")
+        self._cleanup_log_dirs()
+        super().setUp()
+
+    def tearDown(self):
+        self._cleanup_log_dirs()
+        super().tearDown()
+
+    def _cleanup_log_dirs(self):
+        """Helper method to clean up log directories."""
+        for log_dir in [self.default_log_dir, self.user_log_dir]:
+            with suppress(OSError):
+                if os.path.exists(log_dir):
+                    os.rmdir(log_dir)
+
+    @patch('os.makedirs')
+    def test_default_log_directory_creation(self, mock_makedirs):
+        """Test that the default logs directory is created."""
+        mock_makedirs.side_effect = None
+        
+        # Patch sys.modules
+        modules_patcher = patch.dict('sys.modules', {})
+        database_patcher = patch('src.python.database', create=True)
+        
+        with modules_patcher, database_patcher:
+            from src.python.database import TodoDatabase # skipcq: PYL-W0404
+            TodoDatabase()  # Create instance to trigger directory creation
+        
+        mock_makedirs.assert_called_with("logs", exist_ok=True)
+
+    @patch('os.makedirs')
+    def test_fallback_log_directory_creation(self, mock_makedirs):
+        """Test that the fallback user logs directory is created when default fails."""
+        user_home = os.path.expanduser("~")
+        expected_calls = [
+            call("logs", exist_ok=True),
+            call(os.path.normpath(os.path.join(user_home, "logs")), exist_ok=True)
+        ]
+        mock_makedirs.side_effect = [PermissionError, None]
+        
+        # Create database instance to trigger directory creation
+        TodoDatabase()
+        
+        # Verify both directory creation attempts
+        mock_makedirs.assert_has_calls(expected_calls, any_order=False)
+
+    def test_log_directory_exists_after_init(self):
+        """Test that at least one log directory exists after initialization."""
+        # Re-import to trigger directory creation
+        with patch.dict('sys.modules'):
+            if 'src.python.database' in sys.modules:
+                del sys.modules['src.python.database']
+            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+
+        self.assertTrue(
+            os.path.exists(self.default_log_dir) or os.path.exists(self.user_log_dir),
+            "Neither default nor user log directory exists"
+        )
+
+    @patch('os.makedirs')
+    def test_both_directory_creation_fails(self, mock_makedirs):
+        """Test behavior when both default and fallback directory creation fails."""
+        # Setup expected calls
+        user_home = os.path.expanduser("~")
+        expected_calls = [
+            call("logs", exist_ok=True),
+            call(os.path.normpath(os.path.join(user_home, "logs")), exist_ok=True)
+        ]
+        
+        # Configure mock to always raise PermissionError
+        mock_makedirs.side_effect = PermissionError
+        
+        # Create database instance - should handle exceptions gracefully
+        TodoDatabase()
+        
+        # Verify both creation attempts were made
+        mock_makedirs.assert_has_calls(expected_calls, any_order=False)
