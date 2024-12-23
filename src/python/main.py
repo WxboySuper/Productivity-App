@@ -1,6 +1,17 @@
 from flask import Flask, jsonify, request
 from src.python.todo import TodoList
 from werkzeug.exceptions import BadRequest
+import logging as log
+import os
+
+os.makedirs("logs", exist_ok=True)
+
+log.basicConfig(
+    level=log.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    filename="logs/todo.log",
+)
 
 app = Flask(__name__)
 todo = TodoList()
@@ -10,7 +21,8 @@ def get_tasks():
     try:
         return jsonify(todo.tasks)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        log.error("An error occurred while retrieving tasks: %s", str(e))
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/tasks', methods=['POST'])
 def create_task():
@@ -38,6 +50,7 @@ def create_task():
         return jsonify({'id': task_id}), 201
 
     except BadRequest as e:
-        return jsonify({'error': str(e)}), 400
+        log.error("Bad request: %s", str(e))
+        return jsonify({'error': 'Internal Server Error'}), 400
     except Exception as e:
         return jsonify({'error': 'Internal server error'}), 500
