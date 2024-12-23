@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import sqlite3
 from datetime import datetime
 from src.python.database import TodoDatabase, DatabaseError
@@ -7,6 +7,7 @@ import os
 import time
 import warnings
 from contextlib import suppress
+import shutil
 
 #skipcq: PTC-W0046
 class BaseTodoDatabaseTest(unittest.TestCase):
@@ -794,3 +795,136 @@ class TestTodoDatabaseLinkTaskLabel(BaseTodoDatabaseTest):
         with self.assertRaises(DatabaseError) as cm:
             self.db.link_task_label(task_id, label_id)
         self.assertEqual(cm.exception.code, "LINK_EXISTS")
+
+class TestTodoDatabaseInit(BaseTodoDatabaseTest):
+    """Test suite for TodoDatabase.__init__ method."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_init.db')
+
+    def setUp(self):
+        super().setUp()
+    
+    def tearDown(self):
+        super().tearDown()
+
+    def test_init_creates_directory(self):
+        """Verify that __init__ creates database directory if it doesn't exist."""
+        test_dir = os.path.join(self.TEST_DB_DIR, 'new_dir')
+        test_db = os.path.join(test_dir, 'new.db')
+        
+        # Clean up any existing directory
+        if os.path.exists(test_dir):
+            if os.path.exists(test_db):
+                os.remove(test_db)
+            os.rmdir(test_dir)
+            
+        db = TodoDatabase(test_db)
+        self.assertTrue(os.path.exists(test_dir))
+        self.assertTrue(os.path.exists(test_db))
+
+    def test_init_creates_tables(self):
+        """Verify that __init__ creates all required database tables."""
+        with sqlite3.connect(self.TEST_DB_NAME) as conn:
+            cursor = conn.cursor()
+            
+            # Check tasks table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'")
+            self.assertIsNotNone(cursor.fetchone())
+            
+            # Check labels table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='labels'")
+            self.assertIsNotNone(cursor.fetchone())
+            
+            # Check task_labels table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='task_labels'")
+            self.assertIsNotNone(cursor.fetchone())
+
+    def test_init_with_env_variable(self):
+        """Verify that __init__ uses DB_PATH environment variable when db_file is None."""
+        test_db = os.path.join(self.TEST_DB_DIR, 'env_test.db')
+        os.environ['DB_PATH'] = test_db
+        try:
+            db = TodoDatabase(None)
+            self.assertEqual(db.db_file, test_db)
+        finally:
+            del os.environ['DB_PATH']
+
+    def test_init_default_path(self):
+        """Verify that __init__ uses default path when no path provided."""
+        db = TodoDatabase()
+        self.assertEqual(db.db_file, 'todo.db')
+
+    @patch('os.access')
+    def test_init_no_write_permission(self, mock_access):
+        """Verify that __init__ raises PermissionError when no write permission."""
+        mock_access.return_value = False
+        with self.assertRaises(PermissionError):
+            TodoDatabase(self.TEST_DB_NAME)
+
+    def test_init_closes_connection(self):
+        """Verify that __init__ closes the database connection after initialization."""
+        db = TodoDatabase(self.TEST_DB_NAME)
+        self.assertIsNone(db._conn)
+
+class TestTodoDatabaseDel(BaseTodoDatabaseTest):
+    """Test suite for TodoDatabase.__del__ method."""
+
+    TEST_DB_NAME = os.path.join(BaseTodoDatabaseTest.TEST_DB_DIR, 'test_database_del.db')
+
+    def setUp(self):
+        self.db = TodoDatabase(self.TEST_DB_NAME)
+        super().setUp()
+
+    def tearDown(self):
+        if hasattr(self, 'db') and self.db is not None:
+            self.db.close()
+        super().tearDown()
+
+    def test_del_closes_connection_gracefully(self):
+        """Verify that __del__ closes database connection gracefully."""
+        # Create a connection explicitly
+        conn = sqlite3.connect(self.TEST_DB_NAME)
+        self.db._conn = conn
+
+        # Store connection object locally
+        test_conn = self.db._conn
+
+        # Delete the database instance
+        del self.db
+        self.db = None  # Ensure complete cleanup
+
+        # Verify the connection is closed by trying to use it
+        with self.assertRaises(sqlite3.ProgrammingError) as cm:
+            test_conn.execute("SELECT 1")
+        self.assertIn("Cannot operate on a closed database", str(cm.exception))
+
+    @patch('logging.error')
+    def test_del_handles_connection_error(self, mock_log_error):
+        """Verify that __del__ handles connection errors gracefully."""
+        # Create a mock connection that raises an error on close
+        mock_conn = Mock()
+        mock_conn.close.side_effect = sqlite3.Error("Test error")
+        self.db._conn = mock_conn
+        
+        # Delete the database instance
+        del self.db
+        
+        # Verify error was logged
+        mock_log_error.assert_called_once_with(
+            "Error closing database connection: %s",
+            "Test error"
+        )
+
+    def test_del_handles_missing_connection(self):
+        """Verify that __del__ handles case when connection doesn't exist."""
+        # Ensure no connection exists
+        self.db._conn = None
+        # This should not raise any exceptions
+        del self.db
+
+    def test_del_handles_missing_attribute(self):
+        """Verify that __del__ handles case when _conn attribute doesn't exist."""
+        # Remove the _conn attribute
+        delattr(self.db, '_conn')
+        # This should not raise any exceptions
+        del self.db
