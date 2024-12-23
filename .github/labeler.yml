@@ -1,6 +1,8 @@
 Testing:
 - changed-files:
-  - any-glob-to-any-file: 'src/tests/*'
+  - any-glob-to-any-file: 'src/tests/**/*'
+  - any-glob-to-any-file: '**/*test*.py'
+  - any-glob-to-any-file: '**/*spec*.js'
 
 GitHub-Action:
 - changed-files:
