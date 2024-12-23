@@ -82,8 +82,7 @@ class TodoDatabase:
         if not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
         if not os.access(db_dir, os.W_OK):
-            raise PermissionError("No write permission for database directory: %s",
-                                  db_dir)
+            raise PermissionError(f"No write permission for database directory: {db_dir}")
 
         with sqlite3.connect(self.db_file) as conn:
             self.init_database(conn)
