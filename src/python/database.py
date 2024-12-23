@@ -52,6 +52,7 @@ class TodoDatabase:
             self.log_dir = "logs"
         except PermissionError:
             try:
+                # skipcq: FLK-E501
                 user_log_dir = os.path.normpath(os.path.join(os.path.expanduser("~"), "logs"))
                 os.makedirs(user_log_dir, exist_ok=True)
                 self.log_dir = user_log_dir
@@ -64,7 +65,7 @@ class TodoDatabase:
             format="%(asctime)s - %(levelname)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-        
+
         if db_file is None:
             db_file = os.getenv('DB_PATH', 'todo.db')
 
@@ -83,6 +84,7 @@ class TodoDatabase:
         if not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
         if not os.access(db_dir, os.W_OK):
+            # skipcq: FLK-E501
             raise PermissionError(f"No write permission for database directory: {db_dir}")
 
         with sqlite3.connect(self.db_file) as conn:

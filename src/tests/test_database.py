@@ -995,7 +995,7 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
         database_patcher = patch('src.python.database', create=True)
         
         with modules_patcher, database_patcher:
-            from src.python.database import TodoDatabase
+            from src.python.database import TodoDatabase # skipcq: PYL-W0404
             TodoDatabase()  # Create instance to trigger directory creation
         
         mock_makedirs.assert_called_with("logs", exist_ok=True)
