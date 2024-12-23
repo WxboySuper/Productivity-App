@@ -12,8 +12,8 @@ def handle_command(cmd, payload):
     # Add more commands as needed
 
 if __name__ == "__main__":
-    command = sys.argv[1] # pragma: no cover
-    data = json.loads(sys.argv[2]) # pragma: no cover
-    result = handle_command(command, data) # pragma: no cover
-    print(json.dumps(result)) # pragma: no cover
-    print(json.dumps(result)) # pragma: no cover
+    command = sys.argv[1]  # pragma: no cover
+    data = json.loads(sys.argv[2])  # pragma: no cover
+    result = handle_command(command, data)  # pragma: no cover
+    print(json.dumps(result))  # pragma: no cover
+    print(json.dumps(result))  # pragma: no cover
