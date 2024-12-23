@@ -25,6 +25,7 @@ class TestServer(unittest.TestCase):
         """Verify server port is set to 5000."""
         self.assertEqual(app.config.get('PORT', 5000), 5000)
 
+    @staticmethod
     def test_server_run(self):
         """Test server run configuration."""
         with unittest.mock.patch('src.python.server.app.run') as mock_run:
@@ -37,6 +38,7 @@ class TestServer(unittest.TestCase):
             # Verify app.run was called with correct port
             mock_run.assert_called_once_with(port=5000)
 
+    @staticmethod
     def test_server_not_run(self):
         """Test server doesn't run when not main module."""
         with unittest.mock.patch('src.python.server.app.run') as mock_run, \
