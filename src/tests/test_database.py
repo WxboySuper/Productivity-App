@@ -824,6 +824,7 @@ class TestTodoDatabaseInit(BaseTodoDatabaseTest):
             shutil.rmtree(test_dir)
             
         # Test directory creation
+        # skipcq: PYL-W0612
         db = TodoDatabase(test_db)
         self.assertTrue(os.path.exists(test_dir))
         self.assertTrue(os.path.exists(test_db))

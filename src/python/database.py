@@ -13,6 +13,7 @@ except PermissionError:
         os.makedirs(user_log_dir, exist_ok=True)
         log_dir = user_log_dir
     except PermissionError:
+        # skipcq: FLK-E501
         log.warning("Failed to create both default and user log directories. Logging to console only.")
 
 # Configure logging
@@ -78,7 +79,8 @@ class TodoDatabase:
         if not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
         if not os.access(db_dir, os.W_OK):
-            raise PermissionError(f"No write permission for database directory: {db_dir}")
+            raise PermissionError("No write permission for database directory: %s",
+                                  db_dir)
 
         with sqlite3.connect(self.db_file) as conn:
             self.init_database(conn)
@@ -95,7 +97,8 @@ class TodoDatabase:
                 self._conn.close()
                 self._conn = None
         except Exception as e:
-            log.error("Error closing database connection: %s: %s", type(e).__name__, str(e))
+            log.error("Error closing database connection: %s: %s",
+                      type(e).__name__, str(e))
 
     @staticmethod
     def init_database(conn):
@@ -517,7 +520,8 @@ class TodoDatabase:
                 return cursor.fetchall()
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
-            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+            raise DatabaseError("An error occurred while connecting to the database",
+                                "DB_CONN_ERROR") from e
 
     def link_task_label(self, task_id, label_id):
         """
