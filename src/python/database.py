@@ -77,6 +77,10 @@ class TodoDatabase:
         if db_file is None:
             db_file = os.getenv('DB_PATH', '').strip() or 'todo.db'
 
+        # Validate path
+        if not all(c.isprintable() and c not in '<>:"|?&' for c in db_file):
+            raise DatabaseError("Invalid characters in database path", "INVALID_PATH")
+
         db_dir = os.path.dirname(os.path.abspath(db_file))
         if not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
