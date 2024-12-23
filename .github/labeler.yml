@@ -1,6 +1,6 @@
 Testing:
 - changed-files:
-  - any-glob-to-any-file: 'src/testing/*'
+  - any-glob-to-any-file: 'src/tests/*'
 
 GitHub-Action:
 - changed-files:
@@ -25,7 +25,10 @@ css:
 dependencies:
 - changed-files:
   - any-glob-to-any-file: 'requirements.txt'
+  - any-glob-to-any-file: 'package.json'
+  - any-glob-to-any-file: 'package-lock.json'
 
 documentation:
 - changed-files:
-  - any-glob-to-any-file: '*/*.md'
+  - any-glob-to-any-file: '**/*.md'
+  - any-glob-to-any-file: '*.md'
