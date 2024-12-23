@@ -8,6 +8,7 @@ class TestServer(unittest.TestCase):
         """Set up test environment."""
         self.app = app
         self.app.config['TESTING'] = True
+        self.app.config['PORT'] = 5000
         self.client = self.app.test_client()
 
     def test_app_exists(self):
