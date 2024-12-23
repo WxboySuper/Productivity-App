@@ -54,4 +54,4 @@ def create_task():
         return jsonify({'error': 'Internal Server Error'}), 400
     except Exception as e:
         log.error("An error occurred while creating task: %s", str(e))
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({'error': 'Internal Server Error'}), 500
