@@ -1,0 +1,31 @@
+Testing:
+- changed-files:
+  - any-glob-to-any-file: 'src/testing/*'
+
+GitHub-Action:
+- changed-files:
+  - any-glob-to-any-file: '.github/workflows/*'
+
+python:
+- changed-files:
+  - any-glob-to-any-file: 'src/python/*'
+
+javascript:
+- changed-files:
+  - any-glob-to-any-file: 'src/*.js'
+
+html:
+- changed-files:
+  - any-glob-to-any-file: 'src/*.html'
+
+css:
+- changed-files:
+  - any-glob-to-any-file: 'src/*.css'
+
+dependencies:
+- changed-files:
+  - any-glob-to-any-file: 'requirements.txt'
+
+documentation:
+- changed-files:
+  - any-glob-to-any-file: '*/*.md'
