@@ -72,6 +72,7 @@ class TodoDatabase:
         invalid_chars = '<>"|?*&:\\/' if os.name == 'nt' else '\0'
         if any(char in str(db_file) for char in invalid_chars):
             raise DatabaseError(
+                # skipcq: FLK-E501
                 f"Invalid characters in database path. Found: {[c for c in str(db_file) if c in invalid_chars]}",
                 "INVALID_PATH"
             )
@@ -549,7 +550,8 @@ class TodoDatabase:
                 try:
                     cursor.execute(query, (task_id, label_id))
                 except sqlite3.IntegrityError as err:
-                    raise DatabaseError("Task-label link already exists", "LINK_EXISTS") from err
+                    raise DatabaseError("Task-label link already exists",
+                                        "LINK_EXISTS") from err
 
         except sqlite3.OperationalError as e:
             log.error("Database connection error: %s", e)
