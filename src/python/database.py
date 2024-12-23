@@ -2,12 +2,20 @@ import sqlite3
 import os
 import logging as log
 
+# Try to set up logging directory
+log_dir = None
 try:
     os.makedirs("logs", exist_ok=True)
+    log_dir = "logs"
 except PermissionError:
-    user_log_dir = os.path.expanduser("~/logs")
-    os.makedirs(user_log_dir, exist_ok=True)
+    try:
+        user_log_dir = os.path.expanduser("~/logs")
+        os.makedirs(user_log_dir, exist_ok=True)
+        log_dir = user_log_dir
+    except PermissionError:
+        log.warning("Failed to create both default and user log directories. Logging to console only.")
 
+# Configure logging
 log.basicConfig(
     level=log.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
