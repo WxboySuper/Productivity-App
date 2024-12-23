@@ -69,7 +69,7 @@ class TodoDatabase:
             db_file = os.getenv('DB_PATH', 'todo.db')
 
         # Platform-specific invalid characters
-        invalid_chars = '<>"|?*&/' if os.name == 'nt' else '\0'
+        invalid_chars = '<>"|?*&/'
         if any(char in str(db_file) for char in invalid_chars):
             raise DatabaseError(
                 # skipcq: FLK-E501
