@@ -816,7 +816,8 @@ class TestTodoDatabaseInit(BaseTodoDatabaseTest):
             if os.path.exists(test_db):
                 os.remove(test_db)
             os.rmdir(test_dir)
-            
+
+        # skipcq: PYL-W0612
         db = TodoDatabase(test_db)
         self.assertTrue(os.path.exists(test_dir))
         self.assertTrue(os.path.exists(test_db))

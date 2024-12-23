@@ -533,12 +533,6 @@ class TodoDatabase:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
 
-                # Check if task exists
-                task = self.get_task(task_id)
-
-                # Check if label exists
-                label = self.get_label(label_id)
-
                 try:
                     cursor.execute(query, (task_id, label_id))
                 except sqlite3.IntegrityError:
