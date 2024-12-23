@@ -34,7 +34,7 @@ def create_task():
         # Validate required fields
         if 'title' not in task_data:
             raise BadRequest('Missing required field: title')
-        
+
         # Validate data types
         if not isinstance(task_data['title'], str):
             raise BadRequest('Title must be a string')
@@ -46,7 +46,7 @@ def create_task():
             notes=task_data.get('notes'),
             priority=task_data.get('priority')
         )
-        
+
         return jsonify({'id': task_id}), 201
 
     except BadRequest as e:
