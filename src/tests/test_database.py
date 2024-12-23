@@ -984,21 +984,17 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
     def _cleanup_log_dirs(self):
         """Helper method to clean up log directories."""
         for log_dir in [self.default_log_dir, self.user_log_dir]:
-            if os.path.exists(log_dir):
-                try:
+            with suppress(OSError):
+                if os.path.exists(log_dir):
                     os.rmdir(log_dir)
-                except OSError:
-                    pass  # Directory might not be empty or might be used by other processes
 
     @patch('os.makedirs')
     def test_default_log_directory_creation(self, mock_makedirs):
         """Test that the default logs directory is created."""
         mock_makedirs.side_effect = None
-        # Re-import to trigger directory creation
-        with patch.dict('sys.modules'):
-            if 'src.python.database' in sys.modules:
-                del sys.modules['src.python.database']
-            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+        with patch.dict('sys.modules'), patch('sys.modules["src.python.database"]',
+                                              create=True):
+            __import__('src.python.database')
         
         mock_makedirs.assert_called_with("logs", exist_ok=True)
 
