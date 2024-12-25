@@ -1,4 +1,7 @@
 # Productivity App
+[![Run all tests](https://github.com/WxboySuper/Productivity-App/actions/workflows/testing.yml/badge.svg)](https://github.com/WxboySuper/Productivity-App/actions/workflows/testing.yml)
+[![DeepSource](https://app.deepsource.com/gh/WxboySuper/Productivity-App.svg/?label=active+issues&show_trend=true&token=PqTSZxIszGKL6icxa3lwv3Ra)](https://app.deepsource.com/gh/WxboySuper/Productivity-App/)
+[![DeepSource](https://app.deepsource.com/gh/WxboySuper/Productivity-App.svg/?label=code+coverage&show_trend=true&token=PqTSZxIszGKL6icxa3lwv3Ra)](https://app.deepsource.com/gh/WxboySuper/Productivity-App/)
 
 A simple productivity app developed by WeatherboySuper as a fun little project to stay occupied (and sometimes procrastinate (oops)).
 
