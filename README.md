@@ -62,7 +62,7 @@ Create a release build:
 npm run release
 ```
 
-## Testing
+Testing
 Run the Python test suite:
 ```sh
 coverage run --omit=*/test_* -m unittest discover
@@ -74,12 +74,10 @@ coverage report -m
 ```
 
 Project Structure
-```text
-.
-└── src/
-    ├── python/     # Python backend code
-    └── tests/      # Test files
-```
+    
+    src - Source code
+        /python - Python backend code
+        /tests - Test files
 
 ## Contributing
 1. Fork the repository
