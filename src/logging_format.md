@@ -33,7 +33,7 @@ logging.basicConfig(
     format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
     datefmt='%Y-%m-%d %H:%M:%S.%f',
     handlers=[
-        logging.FileHandler('productivity.log'),
+        logging.FileHandler('logs/productivity.log'),
         logging.StreamHandler()
     ]
 )
