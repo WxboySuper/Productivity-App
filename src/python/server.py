@@ -1,5 +1,10 @@
 from flask import Flask
 import logging
+import os
+import signal
+import sys
+
+os.makedirs("logs", exist_ok=True)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -14,11 +19,52 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['PORT'] = 5000
+app.config.update(
+    PORT=5000,
+    ENV='development',
+    DEBUG=True
+)
+
+def signal_handler():
+    """Handle shutdown signals gracefully"""
+    log.info("Received shutdown signal")
+    log.info("Cleaning up resources...")
+    log.debug("No current cleanup implementation")
+    log.info("Server shutdown complete")
+    sys.exit(0)
+
+@app.before_first_request
+def before_first_request():
+    """Log when the server handles its first request"""
+    log.info("Handling first request to the server")
+    log.debug("Server configuration: %s", app.config)
+
+@app.route('/health')
+def health_check():
+    """Basic health check endpoint"""
+    log.debug("Health check requested")
+    return {'status': 'healthy'}, 200
 
 if __name__ == '__main__': # pragma: no cover
     try:
-        log.info("Attempting to Start Productivity App Server")
-        app.run(port=app.config['PORT']) # pragma: no cover
+        # Register signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        log.info("Starting Productivity App Server")
+        log.info("Environment: %s", app.config['ENV'])
+        log.info("Debug mode: %s", app.config['DEBUG'])
+        log.info("Server port: %s", app.config['PORT'])
+        
+        app.run(
+            host='localhost',
+            port=app.config['PORT']
+        )
     except Exception as e:
-        log.critical("Failed to start server - Error: %s", str(e), exc_info=True)
+        log.critical(
+            "Failed to start server - Error: %s", 
+            str(e), 
+            exc_info=True,
+            stack_info=True
+        )
+        sys.exit(1)
