@@ -1,42 +1,72 @@
 from flask import Flask, jsonify, request
 from src.python.todo import TodoList
 from werkzeug.exceptions import BadRequest
-import logging as log
+import logging
 import os
+import uuid
+import json
 
 os.makedirs("logs", exist_ok=True)
 
-log.basicConfig(
-    level=log.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    filename="logs/todo.log",
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S.%f',
+    handlers=[
+        logging.FileHandler('logs/productivity.log'),
+        logging.StreamHandler()
+    ]
 )
+
+log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 todo = TodoList()
 
+# Startup logging
+log.info("Starting Productivity App Server")
+log.debug("Initializing with configuration: %s", app.config)
+
+@app.before_request
+def before_request():
+    request.request_id = str(uuid.uuid4())
+    log.info("Incoming %s request to %s [RequestID: %s]", 
+             request.method, request.path, request.request_id)
+
 @app.route('/tasks', methods=['GET'])
 def get_tasks():
     try:
-        return jsonify(todo.tasks)
+        tasks = todo.tasks
+        log.info("Successfully retrieved %d tasks [RequestID: %s]", 
+                len(tasks), request.request_id)
+        return jsonify(tasks)
     except Exception as e:
-        log.error("An error occurred while retrieving tasks: %s", str(e))
+        log.error("Failed to retrieve tasks [RequestID: %s] - Error: %s", 
+                 request.request_id, str(e), exc_info=True)
         return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/tasks', methods=['POST'])
 def create_task():
     try:
         task_data = request.get_json(silent=True)
+        log.debug("Received task creation request [RequestID: %s] - Data: %s", 
+                 request.request_id, json.dumps(task_data))
+
         if not task_data:
+            log.warning("No data provided in request [RequestID: %s]", 
+                      request.request_id)
             return jsonify({'error': 'No data provided'}), 400
 
         # Validate required fields
         if 'title' not in task_data:
+            log.warning("Missing title in task creation [RequestID: %s]", 
+                      request.request_id)
             raise BadRequest('Missing required field: title')
 
         # Validate data types
         if not isinstance(task_data['title'], str):
+            log.warning("Invalid title type in task creation [RequestID: %s]", 
+                      request.request_id)
             raise BadRequest('Title must be a string')
 
         task_id = todo.add_task(
@@ -47,11 +77,22 @@ def create_task():
             priority=task_data.get('priority')
         )
 
+        log.info("Successfully created task [RequestID: %s, TaskID: %s]", 
+                request.request_id, task_id)
         return jsonify({'id': task_id}), 201
 
     except BadRequest as e:
-        log.error("Bad request: %s", str(e))
-        return jsonify({'error': 'Internal Server Error'}), 400
+        log.warning("Bad request in task creation [RequestID: %s] - Error: %s", 
+                   request.request_id, str(e))
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
-        log.error("An error occurred while creating task: %s", str(e))
+        log.error("Failed to create task [RequestID: %s] - Error: %s", 
+                 request.request_id, str(e), exc_info=True)
         return jsonify({'error': 'Internal Server Error'}), 500
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    log.error("Unhandled exception [RequestID: %s] - Error: %s", 
+              getattr(request, 'request_id', 'NO_REQUEST_ID'), 
+              str(error), exc_info=True)
+    return jsonify({'error': 'Internal Server Error'}), 500
