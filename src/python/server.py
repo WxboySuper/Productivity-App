@@ -4,6 +4,9 @@ import os
 import signal
 import sys
 
+# TODO: Implement a basic health check configuration
+# TODO: Implement a cleanup process for cleanup senarios
+
 os.makedirs("logs", exist_ok=True)
 
 logging.basicConfig(
