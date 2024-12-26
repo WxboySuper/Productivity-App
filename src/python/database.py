@@ -1,7 +1,8 @@
 import sqlite3
 import os
-import logging as log
-
+import logging
+import json
+import uuid
 
 class DatabaseError(Exception):
     """Custom exception class for database-related errors.
@@ -32,63 +33,51 @@ class DatabaseError(Exception):
 
 
 class TodoDatabase:
-    """
-    Provides a TodoDatabase class that manages a SQLite database for storing and managing todo tasks.
-
-    The TodoDatabase class handles the initialization of the database,
-    creating the necessary tables if they don't already exist.
-    It also provides methods for performing CRUD (Create, Read, Update, Delete) operations on tasks and labels,
-    as well as methods for managing the relationships between tasks and labels.
-
-    The class uses parameterized SQL queries and input validation to prevent SQL injection vulnerabilities.
-    """
+    """Database management class for todo tasks."""
 
     def __init__(self, db_file="todo.db"):
-        """Initialize database connection and create log directory."""
-        # Setup logging directories
-        self.log_dir = None
-        try:
-            os.makedirs("logs", exist_ok=True)
-            self.log_dir = "logs"
-        except PermissionError:
-            try:
-                # skipcq: FLK-E501
-                user_log_dir = os.path.normpath(os.path.join(os.path.expanduser("~"), "logs"))
-                os.makedirs(user_log_dir, exist_ok=True)
-                self.log_dir = user_log_dir
-            except PermissionError:
-                log.warning("Failed to create both default and user log directories")
+        """Initialize database connection and setup logging."""
+        os.makedirs("logs", exist_ok=True)
 
-        # Configure logging
-        log.basicConfig(
-            level=log.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
+            datefmt='%Y-%m-%d %H:%M:%S.%f',
+            handlers=[
+                logging.FileHandler('logs/productivity.log'),
+                logging.StreamHandler()
+            ]
         )
 
+        self.log = logging.getLogger(__name__)
+        
         if db_file is None:
             db_file = os.getenv('DB_PATH', 'todo.db')
 
-        # Platform-specific invalid characters
+        # Validate database path
         invalid_chars = '<>"|?*&'
         if any(char in str(db_file) for char in invalid_chars):
-            raise DatabaseError(
-                # skipcq: FLK-E501
-                f"Invalid characters in database path. Found: {[c for c in str(db_file) if c in invalid_chars]}",
-                "INVALID_PATH"
-            )
+            self.log.error("Invalid characters in database path: %s", 
+                          [c for c in str(db_file) if c in invalid_chars])
+            raise DatabaseError("Invalid characters in database path", "INVALID_PATH")
 
         self.db_file = db_file
         db_dir = os.path.dirname(os.path.abspath(db_file))
 
-        if not os.path.exists(db_dir):
-            os.makedirs(db_dir, exist_ok=True)
-        if not os.access(db_dir, os.W_OK):
-            # skipcq: FLK-E501
-            raise PermissionError(f"No write permission for database directory: {db_dir}")
+        try:
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir, exist_ok=True)
+            if not os.access(db_dir, os.W_OK):
+                self.log.error("No write permission for database directory: %s", db_dir)
+                raise PermissionError(f"No write permission for database directory: {db_dir}")
 
-        with sqlite3.connect(self.db_file) as conn:
-            self.init_database(conn)
+            with sqlite3.connect(self.db_file) as conn:
+                self.init_database(conn)
+                self.log.info("Database initialized successfully at %s", self.db_file)
+        except Exception as e:
+            self.log.error("Failed to initialize database: %s", str(e), exc_info=True)
+            raise
+
         self._conn = None
 
     def __del__(self):
@@ -102,8 +91,18 @@ class TodoDatabase:
                 self._conn.close()
                 self._conn = None
         except Exception as e:
-            log.error("Error closing database connection: %s: %s",
+            self.log.error("Error closing database connection: %s: %s",
                       type(e).__name__, str(e))
+
+    @staticmethod
+    def generate_operation_id():
+        """Generate unique operation ID for tracking."""
+        return str(uuid.uuid4())
+
+    def _log_operation(self, operation, details, op_id):
+        """Log database operation with structured details."""
+        self.log.debug("Database operation [OperationID: %s] - %s: %s",
+                      op_id, operation, json.dumps(details))
 
     @staticmethod
     def init_database(conn):
@@ -162,47 +161,34 @@ class TodoDatabase:
             raise DatabaseError("Title cannot be empty", "EMPTY_TITLE")
 
     def add_task(self, title, deadline=None, category=None, notes=None, priority=None):
-        """
-        Adds a new task to the database.
+        """Add a new task to the database."""
+        op_id = self.generate_operation_id()
+        self._log_operation("add_task", {
+            "title": title,
+            "deadline": str(deadline) if deadline else None,
+            "category": category,
+            "notes": notes,
+            "priority": priority
+        }, op_id)
 
-        Args:
-            title (str): The title of the task.
-            deadline (str, optional): The deadline of the task.
-            category (str, optional): The category of the task.
-            notes (str, optional): Additional notes for the task.
-            priority (str, optional): The priority of the task.
-
-        Returns:
-            int: The ID of the newly created task.
-
-        Raises:
-            DatabaseError: If there is an error adding the task. Possible error codes:
-                - INVALID_PRIORITY: If the priority value is not in a valid set
-                - INVALID_TITLE: If the title is None.
-                - EMPTY_TITLE: If the title is empty or whitespace.
-                - DB_CONN_ERROR: If there is a database connection error.
-                - DB_QUERY_ERROR: If there is an error execuring the query.
-        """
-        self._validate_priority(priority)
-        self._validate_title(title)
-
-        query = '''
-            INSERT INTO tasks (title, deadline, category, notes, priority)
-            VALUES (?, ?, ?, ?, ?)
-        '''
         try:
+            self._validate_priority(priority)
+            self._validate_title(title)
+
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
-                cursor.execute(query, (title, deadline, category, notes, priority))
-                conn.commit()
-                log.info("Task created successfully with ID %d", cursor.lastrowid)
-                return cursor.lastrowid
-        except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
-            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
-        except sqlite3.Error as e:
-            log.error("Error adding task: %s", e)
-            raise DatabaseError("An error occurred while adding the task", "DB_QUERY_ERROR") from e
+                cursor.execute("""
+                    INSERT INTO tasks (title, deadline, category, notes, priority)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (title, deadline, category, notes, priority))
+                task_id = cursor.lastrowid
+                self.log.info("Task created successfully [OperationID: %s, TaskID: %d]", 
+                            op_id, task_id)
+                return task_id
+        except Exception as e:
+            self.log.error("Failed to add task [OperationID: %s] - Error: %s", 
+                         op_id, str(e), exc_info=True)
+            raise
 
     def delete_task(self, task_id):
         """
@@ -223,7 +209,7 @@ class TodoDatabase:
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
                 conn.commit()
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def _validate_updates(self, updates):
@@ -286,10 +272,10 @@ class TodoDatabase:
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
                 conn.commit()
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
         except sqlite3.Error as e:
-            log.error("Error updating task: %s", e)
+            self.log.error("Error updating task: %s", e)
             raise DatabaseError("An error occurred while updating the task", "DB_QUERY_ERROR") from e
 
     def mark_completed(self, task_id):
@@ -310,38 +296,34 @@ class TodoDatabase:
                 if cursor.rowcount == 0:
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def get_task(self, task_id):
-        """
-        Retrieves a task from the database by its ID.
+        """Retrieve a task by ID."""
+        op_id = self.generate_operation_id()
+        self._log_operation("get_task", {"task_id": task_id}, op_id)
 
-        Args:
-            task_id (int): The ID of the task to retrieve.
-
-        Returns:
-            tuple: A tuple containing the task's column values.
-
-        Raises:
-            DatabaseError: If the task with the specified ID is not found or database error occurs.
-        """
-        query = 'SELECT * FROM tasks WHERE id = ?'
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
-                cursor.execute(query, (task_id,))
-
+                cursor.execute('SELECT * FROM tasks WHERE id = ?', (task_id,))
                 task = cursor.fetchone()
+                
                 if task is None:
+                    self.log.warning("Task not found [OperationID: %s, TaskID: %d]", 
+                                   op_id, task_id)
                     raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
 
+                self.log.info("Task retrieved successfully [OperationID: %s, TaskID: %d]", 
+                            op_id, task_id)
                 task_list = list(task)
                 task_list[2] = bool(task_list[2])
                 return tuple(task_list)
-        except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
-            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
+        except Exception as e:
+            self.log.error("Failed to get task [OperationID: %s] - Error: %s", 
+                         op_id, str(e), exc_info=True)
+            raise
 
     def get_all_tasks(self):
         """
@@ -357,7 +339,7 @@ class TodoDatabase:
                 cursor.execute(query)
                 return cursor.fetchall()
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def add_label(self, name, color=None):
@@ -399,14 +381,14 @@ class TodoDatabase:
 
                 if result:
                     label_id = result[0]
-                    log.info("Label operation successful. Label ID: %d", label_id)
+                    self.log.info("Label operation successful. Label ID: %d", label_id)
                     return label_id
 
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
         except sqlite3.Error as e:
-            log.error("Error adding label: %s", e)
+            self.log.error("Error adding label: %s", e)
             raise DatabaseError("An error occurred while adding the label", "DB_QUERY_ERROR") from e
 
     def get_label(self, label_id):
@@ -433,7 +415,7 @@ class TodoDatabase:
                     raise DatabaseError(f"Label with ID {label_id} is not found", "LABEL_NOT_FOUND")
                 return label
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def delete_label(self, label_id):
@@ -454,7 +436,7 @@ class TodoDatabase:
                 if cursor.rowcount == 0:
                     raise DatabaseError(f"No label found with ID {label_id}", "LABEL_NOT_FOUND")
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def clear_task_labels(self, task_id):
@@ -467,7 +449,7 @@ class TodoDatabase:
                 if cursor.rowcount == 0:
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def get_task_labels(self, task_id):
@@ -506,7 +488,7 @@ class TodoDatabase:
                 return cursor.fetchall()
 
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def get_all_labels(self):
@@ -524,7 +506,7 @@ class TodoDatabase:
                 cursor.execute(query)
                 return cursor.fetchall()
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database",
                                 "DB_CONN_ERROR") from e
 
@@ -556,5 +538,5 @@ class TodoDatabase:
                                         "LINK_EXISTS") from err
 
         except sqlite3.OperationalError as e:
-            log.error("Database connection error: %s", e)
+            self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
