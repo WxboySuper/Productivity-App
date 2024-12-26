@@ -38,7 +38,7 @@ logging.basicConfig(
     ]
 )
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 ```
 
 ## Usage Examples
