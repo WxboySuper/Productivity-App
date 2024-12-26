@@ -29,7 +29,7 @@
 import logging
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
     datefmt='%Y-%m-%d %H:%M:%S.%f',
     handlers=[
@@ -40,6 +40,8 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 ```
+
+**Logging level DEBUG used during troubleshooting, otherwise INFO is default in the codebase.**
 
 ## Usage Examples
 
