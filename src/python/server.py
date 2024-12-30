@@ -28,7 +28,7 @@ app.config.update(
     DEBUG=True
 )
 
-def signal_handler():
+def signal_handler(signum, frame):
     """Handle shutdown signals gracefully"""
     log.info("Received shutdown signal")
     log.info("Cleaning up resources...")

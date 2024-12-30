@@ -36,7 +36,7 @@ def handle_command(cmd, payload):
             return tasks
 
         elif cmd == "add_task":
-            if not all(k in payload for k in ["title"]):
+            if not all(k in payload for k in ["title"]) or not isinstance(payload["title"], str) or not payload["title"].strip():
                 log.error("Missing required fields in payload [RequestID: %s]", cmd_request_id)
                 raise ValueError("Missing required fields in payload")
 

@@ -44,6 +44,9 @@ const logOperation = (type, operation, details = {}, error = null) => {
         case 'error':
             log.error(JSON.stringify(logData));
             break;
+        default:
+            log.warn(`Invalid log type: ${type}`);
+            break;
     }
 
     return requestId;
