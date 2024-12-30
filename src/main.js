@@ -1,8 +1,8 @@
 const { app, BrowserWindow } = require('electron')
 const { spawn } = require('child_process')
 const path = require('path')
-const log = require('electron-log')
-const { PythonShell } = require('python-shell');
+const { log, logOperation } = require('./js/logging_config')
+const { PythonShell } = require('python-shell')
 const pythonPath = process.env.PYTHON_PATH || 'python'
 
 let serverProcess = null
@@ -20,12 +20,15 @@ function startBackendProcesses() {
     const serverScript = path.join(baseDir, 'server.py')
     const bridgeScript = path.join(baseDir, 'todo_bridge.py')
 
+    logOperation('info', 'startBackendProcesses', { userDataPath, dbPath })
+
     try {  
         serverProcess = spawn(pythonPath, [serverScript], {  
             env: { ...process.env, DB_PATH: dbPath }  
         })  
+        logOperation('info', 'serverStarted', { script: serverScript })
      } catch (error) {  
-         log.error(`Failed to start server process: ${error}`)  
+         logOperation('error', 'serverStartFailed', {}, error)
          app.quit()  
      }     
 
@@ -40,14 +43,14 @@ function startBackendProcesses() {
 
     serverProcess.stdout.on('data', (data) => {
         const output = data.toString();  
-        log.info(`Server: ${output}`)  
+        logOperation('info', 'serverOutput', { output })
         if (output.includes('Running on')) {
             log.info('Flask server started successfully')
         }
     })
 
     serverProcess.stderr.on('data', (data) => {
-        log.error(`Server Error: ${data}`)
+        logOperation('error', 'serverError', { error: data.toString() })
     })
     
     bridgeProcess.stdout.on('data', (data) => {

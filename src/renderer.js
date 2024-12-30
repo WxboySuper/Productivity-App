@@ -1,12 +1,15 @@
 const { PythonShell } = require('python-shell')
 const path = require('path')
+const { logOperation } = require('./js/logging_config')
 
 const scriptPath = process.env.NODE_ENV === 'production' 
     ? path.join(process.resourcesPath, 'src', 'python')
     : path.join(__dirname, 'python')
 
 // Function to communicate with Python
-function runPythonCommand(command, data) {
+async function runPythonCommand(command, data) {
+    const requestId = logOperation('debug', 'pythonCommand', { command, data })
+    
     return new Promise((resolve, reject) => {
         const options = {
             mode: 'json',
@@ -16,15 +19,18 @@ function runPythonCommand(command, data) {
         }
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
-            if (err) {  
-            reject(new Error(`Failed to execute Python command '${command}': ${err.message}`));  
-            return;  
-            }  
-            if (!results || results.length === 0) {  
-                reject(new Error(`No results returned from Python command '${command}'`));  
-                return;  
-            }  
-            resolve(results[0]);
+            if (err) {
+                logOperation('error', 'pythonCommandFailed', { command, error: err.message }, err)
+                reject(new Error(`Failed to execute Python command '${command}': ${err.message}`))
+                return
+            }
+            if (!results || results.length === 0) {
+                logOperation('error', 'pythonCommandNoResults', { command })
+                reject(new Error(`No results returned from Python command '${command}'`))
+                return
+            }
+            logOperation('info', 'pythonCommandSuccess', { command, results })
+            resolve(results[0])
         })
     })
 }
@@ -91,9 +97,13 @@ function displayTasks() {
 }
 
 async function refreshTaskList() {
+    const requestId = logOperation('debug', 'refreshTaskList')
+    
     try {
-        const response = await fetch('http://localhost:5000/tasks');
-        const tasks = await response.json();
+        const response = await fetchWithRetry('http://localhost:5000/tasks')
+        const tasks = await response.json()
+        
+        logOperation('info', 'tasksRefreshed', { requestId, taskCount: tasks.length })
         
         const tbody = document.getElementById('tasks-tbody');
         tbody.innerHTML = '';
@@ -110,7 +120,7 @@ async function refreshTaskList() {
             tbody.appendChild(row);
         });
     } catch (error) {
-        console.log('Error refreshing task list:', error);
+        logOperation('error', 'refreshTasksFailed', { requestId }, error)
     }
 }
 // Call refreshTaskList when the page loads
@@ -182,7 +192,8 @@ async function createTask(taskData) {
 
 // skipcq: JS-0045, JS-0128
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
-    const timeout = options.timeout || 5000;
+    const requestId = logOperation('debug', 'fetchWithRetry', { url, maxRetries })
+    
     for (let i = 0; i < maxRetries; i++) {
         try {
             const controller = new AbortController();  
@@ -198,12 +209,17 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
             if (!response.ok) {  
                 throw new Error(`HTTP error! status: ${response.status}`);  
             }  
-            return response;
+            logOperation('info', 'fetchSuccess', { requestId, attempt: i + 1 })
+            return response
         } catch (error) {
+            logOperation('warn', 'fetchRetry', { requestId, attempt: i + 1, error: error.message })
             if (error.name === 'AbortError') {  
                 throw new Error(`Request timeout after ${timeout}ms`);  
             }
-            if (i === maxRetries - 1) throw error;
+            if (i === maxRetries - 1) {
+                logOperation('error', 'fetchFailed', { requestId }, error)
+                throw error
+            }
             // Exponential backoff with jitter  
             const delay = Math.min(1000 * Math.pow(2, i) + Math.random() * 1000, 10000);  
             await new Promise(resolve => setTimeout(resolve, delay));
