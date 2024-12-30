@@ -1,22 +1,12 @@
 from src.python.database import TodoDatabase, DatabaseError
-import logging
+from src.python.logging_config import setup_logging, log_execution_time, log_context
 import os
 import uuid
 import json
 
 os.makedirs("logs", exist_ok=True)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S.%f',
-    handlers=[
-        logging.FileHandler('logs/productivity.log'),
-        logging.StreamHandler()
-    ]
-)
-
-log = logging.getLogger(__name__)
+log = setup_logging(__name__)
 
 class TodoList:
     """
@@ -51,32 +41,18 @@ class TodoList:
         """Generate unique operation ID for tracking."""
         return str(uuid.uuid4())
 
+    @log_execution_time(log)
     def refresh_tasks(self):
-        """
-        Refreshes the list of tasks by retrieving all tasks
-        from the database and updating the `tasks` attribute.
+        with log_context(log, "refresh_tasks", operation_id=self.generate_operation_id()):
+            try:
+                self.tasks = self.db.get_all_tasks()
+                log.info("Successfully refreshed %d tasks", len(self.tasks))
+            except Exception as e:
+                log.error("Failed to refresh tasks - Error: %s", str(e), exc_info=True)
+                self.tasks = []
+                raise
 
-        Raises:
-            RuntimeError: If an error occurs while retrieving tasks from the database
-        """
-        op_id = self.generate_operation_id()
-        log.info("Refreshing tasks [OperationID: %s]", op_id)
-        
-        try:
-            self.tasks = self.db.get_all_tasks()
-            log.info("Successfully refreshed %d tasks [OperationID: %s]", 
-                    len(self.tasks), op_id)
-        except TimeoutError as e:
-            log.error("Timeout while refreshing tasks [OperationID: %s] - Error: %s", 
-                     op_id, str(e), exc_info=True)
-            self.tasks = []
-            raise RuntimeError(f"Connection timeout: {e}") from e
-        except DatabaseError as e:
-            log.error("Database error while refreshing tasks [OperationID: %s] - Error: %s", 
-                     op_id, str(e), exc_info=True)
-            self.tasks = []
-            raise RuntimeError(f"Database error: {str(e)}") from e
-
+    @log_execution_time(log)
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
         """
         Adds a new task to the TodoList and saves it to the database.
@@ -91,31 +67,29 @@ class TodoList:
         Returns:
             int: The ID of the newly added task.
         """
-        op_id = self.generate_operation_id()
-        log.info("Adding new task [OperationID: %s]", op_id)
-        log.debug("Task details [OperationID: %s]: %s", op_id,
-                 json.dumps({
-                     'task': task,
-                     'deadline': str(deadline) if deadline else None,
-                     'category': category,
-                     'notes': notes,
-                     'priority': priority
-                 }))
+        with log_context(log, "add_task", operation_id=self.generate_operation_id()):
+            log.debug("Task details: %s", json.dumps({
+                'task': task,
+                'deadline': str(deadline) if deadline else None,
+                'category': category,
+                'notes': notes,
+                'priority': priority
+            }))
 
-        if not task or not isinstance(task, str):
-            log.error("Invalid task parameter [OperationID: %s] - Task must be non-empty string", op_id)
-            raise ValueError("Task must be a non-empty string")
+            if not task or not isinstance(task, str):
+                log.error("Invalid task parameter - Task must be non-empty string")
+                raise ValueError("Task must be a non-empty string")
 
-        try:
-            task_id = self.db.add_task(task, deadline, category, notes, priority)
-            self.refresh_tasks()
-            log.info("Successfully added task [OperationID: %s, TaskID: %s]", op_id, task_id)
-            return task_id
-        except (TimeoutError, DatabaseError) as e:
-            log.error("Failed to add task [OperationID: %s] - Error: %s", 
-                     op_id, str(e), exc_info=True)
-            raise RuntimeError(f"Database operation failed: {str(e)}") from e
+            try:
+                task_id = self.db.add_task(task, deadline, category, notes, priority)
+                self.refresh_tasks()
+                log.info("Successfully added task [TaskID: %s]", task_id)
+                return task_id
+            except (TimeoutError, DatabaseError) as e:
+                log.error("Failed to add task - Error: %s", str(e), exc_info=True)
+                raise RuntimeError(f"Database operation failed: {str(e)}") from e
 
+    @log_execution_time(log)
     def mark_completed(self, task_index):
         """
         Marks the task at the specified index as completed in the database and updates the tasks list.
@@ -127,31 +101,26 @@ class TodoList:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
             ValueError: If the task is already marked as completed.
         """
-        op_id = self.generate_operation_id()
-        log.info("Marking task as completed [OperationID: %s, TaskIndex: %d]", 
-                op_id, task_index)
+        with log_context(log, "mark_completed", operation_id=self.generate_operation_id()):
+            if not (0 <= task_index < len(self.tasks)):
+                log.error("Invalid task index [TaskIndex: %d]", task_index)
+                raise IndexError("Invalid task index!")
 
-        if not (0 <= task_index < len(self.tasks)):
-            log.error("Invalid task index [OperationID: %s, TaskIndex: %d]", 
-                     op_id, task_index)
-            raise IndexError("Invalid task index!")
+            task_id = self.tasks[task_index][0]
+            try:
+                task = self.db.get_task(task_id)
+                if task[6]:  # Assuming index 6 stores the completion status
+                    log.warning("Task is already marked as completed")
+                    raise ValueError("Task is already marked as completed")
 
-        task_id = self.tasks[task_index][0]
-        try:
-            task = self.db.get_task(task_id)
-            if task[6]:  # Assuming index 6 stores the completion status
-                log.warning("Task is already marked as completed")
-                raise ValueError("Task is already marked as completed")
+                self.db.mark_completed(task_id)
+                self.refresh_tasks()
+                log.info("Task marked as completed [TaskID: %s]", task_id)
+            except Exception as e:
+                log.error("Failed to mark task as completed - Error: %s", str(e), exc_info=True)
+                raise
 
-            self.db.mark_completed(task_id)
-            self.refresh_tasks()
-            log.info("Task marked as completed [OperationID: %s, TaskID: %s]", 
-                    op_id, task_id)
-        except Exception as e:
-            log.error("Failed to mark task as completed [OperationID: %s] - Error: %s", 
-                     op_id, str(e), exc_info=True)
-            raise
-
+    @log_execution_time(log)
     def update_task(self, task_index, **updates):
         """
         Updates the task at the specified index with the provided updates.
@@ -165,26 +134,23 @@ class TodoList:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
             RuntimeError: If a database error or timeout occurs.
         """
-        op_id = self.generate_operation_id()
-        log.info("Updating task [OperationID: %s, TaskIndex: %d]", op_id, task_index)
-        log.debug("Update details [OperationID: %s]: %s", op_id, json.dumps(updates))
+        with log_context(log, "update_task", operation_id=self.generate_operation_id()):
+            log.debug("Update details: %s", json.dumps(updates))
 
-        if not (0 <= task_index < len(self.tasks)):
-            log.error("Invalid task index [OperationID: %s, TaskIndex: %d]", 
-                     op_id, task_index)
-            raise IndexError("Invalid task index!")
+            if not (0 <= task_index < len(self.tasks)):
+                log.error("Invalid task index [TaskIndex: %d]", task_index)
+                raise IndexError("Invalid task index!")
 
-        task_id = self.tasks[task_index][0]
-        try:
-            self.db.update_task(task_id, **updates)
-            self.refresh_tasks()
-            log.info("Successfully updated task [OperationID: %s, TaskID: %s]", 
-                    op_id, task_id)
-        except Exception as e:
-            log.error("Failed to update task [OperationID: %s] - Error: %s", 
-                     op_id, str(e), exc_info=True)
-            raise
+            task_id = self.tasks[task_index][0]
+            try:
+                self.db.update_task(task_id, **updates)
+                self.refresh_tasks()
+                log.info("Successfully updated task [TaskID: %s]", task_id)
+            except Exception as e:
+                log.error("Failed to update task - Error: %s", str(e), exc_info=True)
+                raise
 
+    @log_execution_time(log)
     def delete_task(self, task_index):
         """
         Deletes the task at the specified index from the database and updates the tasks list.
@@ -196,22 +162,17 @@ class TodoList:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
             RuntimeError: If a database error or timeout occurs.
         """
-        op_id = self.generate_operation_id()
-        log.info("Deleting task [OperationID: %s, TaskIndex: %d]", op_id, task_index)
+        with log_context(log, "delete_task", operation_id=self.generate_operation_id()):
+            if not (0 <= task_index < len(self.tasks)):
+                log.error("Invalid task index [TaskIndex: %d]", task_index)
+                raise IndexError("Invalid task index!")
 
-        if not (0 <= task_index < len(self.tasks)):
-            log.error("Invalid task index [OperationID: %s, TaskIndex: %d]", 
-                     op_id, task_index)
-            raise IndexError("Invalid task index!")
-
-        task_id = self.tasks[task_index][0]
-        try:
-            task = self.db.get_task(task_id)
-            self.db.delete_task(task_id)
-            self.refresh_tasks()
-            log.info("Successfully deleted task [OperationID: %s, TaskID: %s]", 
-                    op_id, task_id)
-        except Exception as e:
-            log.error("Failed to delete task [OperationID: %s] - Error: %s", 
-                     op_id, str(e), exc_info=True)
-            raise
+            task_id = self.tasks[task_index][0]
+            try:
+                task = self.db.get_task(task_id)
+                self.db.delete_task(task_id)
+                self.refresh_tasks()
+                log.info("Successfully deleted task [TaskID: %s]", task_id)
+            except Exception as e:
+                log.error("Failed to delete task - Error: %s", str(e), exc_info=True)
+                raise
