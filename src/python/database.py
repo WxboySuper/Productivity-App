@@ -76,7 +76,7 @@ class TodoDatabase:
         invalid_chars = '<>"|?*&'
         if any(char in str(db_file) for char in invalid_chars):
             self.log.error("Invalid characters in database path: %s", 
-                          [c for c in str(db_file) if c in invalid_chars])
+                           [c for c in str(db_file) if c in invalid_chars])
             raise DatabaseError("Invalid characters in database path", "INVALID_PATH")
 
         self.db_file = db_file
@@ -110,7 +110,7 @@ class TodoDatabase:
                 self._conn = None
         except Exception as e:
             logging.error("Error closing database connection: %s: %s",
-                        type(e).__name__, str(e))
+                          type(e).__name__, str(e))
     @staticmethod
     def generate_operation_id():
         """Generate unique operation ID for tracking."""
@@ -119,7 +119,7 @@ class TodoDatabase:
     def _log_operation(self, operation, details, op_id):
         """Log database operation with structured details."""
         self.log.debug("Database operation [OperationID: %s] - %s: %s",
-                      op_id, operation, json.dumps(details))
+                       op_id, operation, json.dumps(details))
 
     @staticmethod
     def init_database(conn):
@@ -200,7 +200,7 @@ class TodoDatabase:
                 """, (title, deadline, category, notes, priority))
                 task_id = cursor.lastrowid
                 self.log.info("Task created successfully [OperationID: %s, TaskID: %d]", 
-                            op_id, task_id)
+                              op_id, task_id)
                 return task_id
         except sqlite3.OperationalError as e:
             self.log.error("Database connection error [OperationID: %s]: %s", op_id, str(e))
@@ -210,7 +210,7 @@ class TodoDatabase:
             raise DatabaseError("An error occurred while adding the task", "DB_QUERY_ERROR") from e
         except Exception as e:
             self.log.error("Failed to add task [OperationID: %s] - Error: %s", 
-                         op_id, str(e), exc_info=True)
+                           op_id, str(e), exc_info=True)
             raise
 
     def delete_task(self, task_id):
@@ -335,11 +335,11 @@ class TodoDatabase:
 
                 if task is None:
                     self.log.warning("Task not found [OperationID: %s, TaskID: %d]", 
-                                   op_id, task_id)
+                                     op_id, task_id)
                     raise DatabaseError("Task not found", "TASK_NOT_FOUND")
 
                 self.log.info("Task retrieved successfully [OperationID: %s, TaskID: %d]", 
-                            op_id, task_id)
+                              op_id, task_id)
                 task_list = list(task)
                 task_list[2] = bool(task_list[2])
                 return tuple(task_list)
@@ -348,7 +348,7 @@ class TodoDatabase:
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
         except Exception as e:
             self.log.error("Failed to get task [OperationID: %s] - Error: %s", 
-                         op_id, str(e), exc_info=True)
+                           op_id, str(e), exc_info=True)
             raise
 
     def get_all_tasks(self):

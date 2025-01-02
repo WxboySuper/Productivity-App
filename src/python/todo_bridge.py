@@ -45,8 +45,8 @@ def handle_command(cmd, payload):
         raise ValueError(f"Unknown command: {cmd}")
 
     except Exception as e:
-        log.error("Error processing command %s [RequestID: %s] - Error: %s", 
-                 cmd, cmd_request_id, str(e), exc_info=True)
+        log.error("Error processing command %s [RequestID: %s] - Error: %s",
+                  cmd, cmd_request_id, str(e), exc_info=True)
         raise
 
 if __name__ == "__main__":
@@ -65,14 +65,14 @@ if __name__ == "__main__":
             log.error("Invalid JSON payload [RequestID: %s] - Error: %s", request_id, str(e))
             raise
 
-        log.debug("Executing command: %s with payload: %s [RequestID: %s]", 
-                 command, json.dumps(data), request_id)
+        log.debug("Executing command: %s with payload: %s [RequestID: %s]",
+                  command, json.dumps(data), request_id)
 
         result = handle_command(command, data)
         print(json.dumps(result))
         log.info("Command executed successfully [RequestID: %s]", request_id)
 
     except Exception as e:
-        log.error("Bridge script failed [RequestID: %s] - Error: %s", 
-                 request_id, str(e), exc_info=True)
+        log.error("Bridge script failed [RequestID: %s] - Error: %s",
+                  request_id, str(e), exc_info=True)
         sys.exit(1)

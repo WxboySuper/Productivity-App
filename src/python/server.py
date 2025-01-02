@@ -70,8 +70,8 @@ if __name__ == '__main__': # pragma: no cover
         )
     except Exception as e:
         log.critical(
-            "Failed to start server - Error: %s", 
-            str(e), 
+            "Failed to start server - Error: %s",
+            str(e),
             exc_info=True
         )
         sys.exit(1)
