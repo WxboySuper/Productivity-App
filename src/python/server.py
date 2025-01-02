@@ -26,7 +26,7 @@ app.config.update(
 )
 
 
-def signal_handler(signum, frame):
+def signal_handler(_signum, _frame):
     """Handle shutdown signals gracefully"""
     log.info("Received shutdown signal")
     log.info("Cleaning up resources...")
@@ -35,17 +35,13 @@ def signal_handler(signum, frame):
     sys.exit(0)
 
 
-_is_first_request = True
-
-
 @app.before_request
 def before_request():
     """Log when the server handles its first request"""
-    global _is_first_request
-    if _is_first_request:
+    if not app.config.get('handled_first_request'):
         log.info("Handling first request to the server")
         log.debug("Server configuration: %s", app.config)
-        _is_first_request = False
+        app.config['handled_first_request'] = True
 
 
 @app.route('/health')

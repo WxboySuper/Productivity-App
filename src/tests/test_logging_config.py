@@ -32,7 +32,7 @@ class TestLoggingConfig(unittest.TestCase):
                 os.remove(self.log_file)
             os.rmdir(self.log_dir)
             os.rmdir(self.temp_dir)
-        except (PermissionError, OSError):
+        except OSError:
             pass
 
     def test_setup_logging(self):
@@ -88,7 +88,7 @@ class TestLoggingConfig(unittest.TestCase):
         test_logger.addHandler(handler)
 
         # Write enough data to trigger rotation
-        for i in range(10):
+        for _ in range(10):
             test_logger.info('x' * 50)  # 50 bytes per message
             handler.doRollover()  # Force rotation
 
