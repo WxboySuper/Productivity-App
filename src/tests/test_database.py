@@ -992,10 +992,10 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
         
         # Patch sys.modules
         modules_patcher = patch.dict('sys.modules', {})
-        database_patcher = patch('src.python.database', create=True)
+        database_patcher = patch('python.database', create=True)
         
         with modules_patcher, database_patcher:
-            from src.python.database import TodoDatabase # skipcq: PYL-W0404
+            from python.database import TodoDatabase # skipcq: PYL-W0404
             TodoDatabase()  # Create instance to trigger directory creation
         
         mock_makedirs.assert_called_with("logs", exist_ok=True)
@@ -1020,9 +1020,9 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
         """Test that at least one log directory exists after initialization."""
         # Re-import to trigger directory creation
         with patch.dict('sys.modules'):
-            if 'src.python.database' in sys.modules:
-                del sys.modules['src.python.database']
-            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+            if 'python.database' in sys.modules:
+                del sys.modules['python.database']
+            from python.database import TodoDatabase  # skipcq: PYL-W0404
 
         self.assertTrue(
             os.path.exists(self.default_log_dir) or os.path.exists(self.user_log_dir),
