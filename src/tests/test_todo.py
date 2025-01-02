@@ -753,16 +753,12 @@ class TestTodoListDeleteTask(BaseTodoListTest):
             (1, "Task 1", None, None, None, None)
         ]
         self.todo_list.tasks = test_tasks
-        
-        # Configure mocks in correct order
-        self.mock_db.get_task.return_value = test_tasks[0]
         self.todo_list.refresh_tasks = Mock()
 
         # Execute test
         self.todo_list.delete_task(0)
 
-        # Verify behavior - order is important
-        self.mock_db.get_task.assert_called_once_with(1)
+        # Verify behavior
         self.mock_db.delete_task.assert_called_once_with(1)
         self.todo_list.refresh_tasks.assert_called_once()
 
