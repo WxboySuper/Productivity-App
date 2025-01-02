@@ -8,6 +8,7 @@ os.makedirs("logs", exist_ok=True)
 
 log = setup_logging(__name__)
 
+
 class TodoList:
     """
     Represents a list of tasks that can be managed, including adding, marking as completed, updating, and deleting tasks.

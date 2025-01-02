@@ -13,6 +13,7 @@ setup_logging(__name__)
 log = logging.getLogger(__name__)
 todo = TodoList()
 
+
 def generate_request_id():
     return str(uuid.uuid4())
 

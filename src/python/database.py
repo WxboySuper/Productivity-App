@@ -4,6 +4,7 @@ import logging
 import json
 import uuid
 
+
 class DatabaseError(Exception):
     """Custom exception class for database-related errors.
 
@@ -111,6 +112,7 @@ class TodoDatabase:
         except Exception as e:
             logging.error("Error closing database connection: %s: %s",
                           type(e).__name__, str(e))
+
     @staticmethod
     def generate_operation_id():
         """Generate unique operation ID for tracking."""
@@ -199,7 +201,7 @@ class TodoDatabase:
                     VALUES (?, ?, ?, ?, ?)
                 """, (title, deadline, category, notes, priority))
                 task_id = cursor.lastrowid
-                self.log.info("Task created successfully [OperationID: %s, TaskID: %d]", 
+                self.log.info("Task created successfully [OperationID: %s, TaskID: %d]",
                               op_id, task_id)
                 return task_id
         except sqlite3.OperationalError as e:
@@ -209,7 +211,7 @@ class TodoDatabase:
             self.log.error("Error adding task: %s", e)
             raise DatabaseError("An error occurred while adding the task", "DB_QUERY_ERROR") from e
         except Exception as e:
-            self.log.error("Failed to add task [OperationID: %s] - Error: %s", 
+            self.log.error("Failed to add task [OperationID: %s] - Error: %s",
                            op_id, str(e), exc_info=True)
             raise
 

@@ -16,6 +16,7 @@ todo = TodoList()
 log.info("Starting Productivity App Server")
 log.debug("Initializing with configuration: %s", app.config)
 
+
 @app.before_request
 def before_request():
     request.request_id = str(uuid.uuid4())
@@ -94,6 +95,7 @@ def create_task():
             log.error("Failed to create task [RequestID: %s] - Error: %s",
                       request.request_id, str(e), exc_info=True)
             return jsonify({'error': 'Internal Server Error'}), 500
+
 
 @app.errorhandler(Exception)
 def handle_error(error):

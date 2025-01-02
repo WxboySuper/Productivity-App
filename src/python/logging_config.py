@@ -7,6 +7,7 @@ from contextlib import contextmanager
 # Create logs directory
 os.makedirs("logs", exist_ok=True)
 
+
 def setup_logging(logger_name, log_file=None):
     """
     Setup logging configuration.
@@ -47,6 +48,7 @@ def setup_logging(logger_name, log_file=None):
 
     return logger
 
+
 def log_execution_time(logger):
     """Decorator to log function execution time"""
     def decorator(func):
@@ -57,7 +59,7 @@ def log_execution_time(logger):
                 result = func(*args, **kwargs)
                 execution_time = time.time() - start_time
                 logger.debug(
-                    "Function '%s' executed in %.2f seconds", 
+                    "Function '%s' executed in %.2f seconds",
                     func.__name__, execution_time
                 )
                 return result
@@ -71,6 +73,7 @@ def log_execution_time(logger):
                 raise
         return wrapper
     return decorator
+
 
 @contextmanager
 def log_context(logger, operation, **context):

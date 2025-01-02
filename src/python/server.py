@@ -28,6 +28,7 @@ app.config.update(
     DEBUG=True
 )
 
+
 def signal_handler(signum, frame):
     """Handle shutdown signals gracefully"""
     log.info("Received shutdown signal")
@@ -36,7 +37,9 @@ def signal_handler(signum, frame):
     log.info("Server shutdown complete")
     sys.exit(0)
 
+
 _is_first_request = True
+
 
 @app.before_request
 def before_request():
@@ -47,11 +50,13 @@ def before_request():
         log.debug("Server configuration: %s", app.config)
         _is_first_request = False
 
+
 @app.route('/health')
 def health_check():
     """Basic health check endpoint"""
     log.debug("Health check requested")
     return {'status': 'healthy'}, 200
+
 
 if __name__ == '__main__': # pragma: no cover
     try:
