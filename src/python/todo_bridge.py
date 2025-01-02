@@ -1,6 +1,6 @@
 import sys
 import json
-from src.python.todo import TodoList
+from python.todo import TodoList
 import logging
 import uuid
 import os

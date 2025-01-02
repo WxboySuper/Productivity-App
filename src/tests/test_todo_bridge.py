@@ -1,18 +1,9 @@
 import unittest
 from unittest.mock import Mock, patch
-import os
-
-print(f"Current working directory: {os.getcwd()}")
-
-from src.python.todo_bridge import handle_command
+from python.todo_bridge import handle_command
 
 class TestTodoBridgeHandleCommand(unittest.TestCase):
     """Test suite for handle_command function in todo_bridge.py"""
-
-    @classmethod
-    def setUpClass(cls):
-        """Set up class-level test fixtures"""
-        print(f"Working directory during test setup: {os.getcwd()}")
 
     def setUp(self):
         """Set up test fixtures"""

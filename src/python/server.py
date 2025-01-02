@@ -72,7 +72,6 @@ if __name__ == '__main__': # pragma: no cover
         log.critical(
             "Failed to start server - Error: %s", 
             str(e), 
-            exc_info=True,
             exc_info=True
         )
         sys.exit(1)
