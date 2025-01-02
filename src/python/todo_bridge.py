@@ -8,7 +8,7 @@ from python.logging_config import setup_logging
 
 os.makedirs("logs", exist_ok=True)
 
-setup_logging()
+setup_logging(__name__)
 
 log = logging.getLogger(__name__)
 todo = TodoList()
