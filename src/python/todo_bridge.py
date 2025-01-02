@@ -15,9 +15,30 @@ todo = TodoList()
 
 
 def generate_request_id():
+    """
+    Generate a unique request ID using UUID4.
+
+    Returns:
+        str: A unique request ID in string format
+    """
     return str(uuid.uuid4())
 
 def handle_command(cmd, payload):
+    """
+    Process incoming commands and their payloads.
+
+    Args:
+        cmd (str): The command to execute ('get_tasks' or 'add_task')
+        payload (dict): The command payload containing task details
+
+    Returns:
+        dict: Response data depending on the command:
+            - For 'get_tasks': List of all tasks
+            - For 'add_task': Dictionary with new task_id
+
+    Raises:
+        ValueError: If the command is unknown or payload is invalid
+    """
     cmd_request_id = generate_request_id()
     log.info("Processing command: %s [RequestID: %s]", cmd, cmd_request_id)
     log.debug("Command payload: %s [RequestID: %s]", json.dumps(payload), cmd_request_id)
@@ -30,7 +51,7 @@ def handle_command(cmd, payload):
             return tasks
 
         if cmd == "add_task":
-            if not all(k in payload for k in ['title', 'deadline', 'category']) or not isinstance(payload['title'], str) or not payload['title'].strip():
+            if not all(k in payload for k in ['title', 'deadline', 'category']) or not isinstance(payload['title'], str) or not payload['title'].strip():  #skipcq: FLK-E501
                 log.error("Missing required fields in payload [RequestID: %s]", cmd_request_id)
                 raise ValueError("Missing required fields in payload")
 

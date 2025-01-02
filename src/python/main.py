@@ -19,6 +19,10 @@ log.debug("Initializing with configuration: %s", app.config)
 
 @app.before_request
 def before_request():
+    """
+    Middleware that executes before each request.
+    Generates and assigns a unique request ID for request tracking.
+    """
     request.request_id = str(uuid.uuid4())
     log.info("Incoming %s request to %s [RequestID: %s]",
              request.method, request.path, request.request_id)
@@ -26,6 +30,14 @@ def before_request():
 @app.route('/tasks', methods=['GET'])
 @log_execution_time(log)
 def get_tasks():
+    """
+    Retrieve all tasks from the todo list.
+
+    Returns:
+        JSON response containing list of tasks or error message
+        200: Success with tasks list
+        500: Internal server error
+    """
     with log_context(log, "get_tasks", request_id=request.request_id):
         try:
             tasks = todo.tasks
@@ -40,6 +52,24 @@ def get_tasks():
 @app.route('/tasks', methods=['POST'])
 @log_execution_time(log)
 def create_task():
+    """
+    Create a new task in the todo list.
+
+    Expected JSON payload:
+        {
+            "title": str (required),
+            "deadline": str (optional),
+            "category": str (optional),
+            "notes": str (optional),
+            "priority": int (optional)
+        }
+
+    Returns:
+        JSON response with task ID or error message
+        201: Successfully created task
+        400: Bad request (invalid data)
+        500: Internal server error
+    """
     with log_context(log, "create_task", request_id=request.request_id):
         try:
             if not request.is_json:
@@ -99,6 +129,16 @@ def create_task():
 
 @app.errorhandler(Exception)
 def handle_error(error):
+    """
+    Global error handler for all unhandled exceptions.
+
+    Args:
+        error: The exception that was raised
+
+    Returns:
+        JSON response with error message
+        500: Internal server error
+    """
     log.error("Unhandled exception [RequestID: %s] - Error: %s",
               getattr(request, 'request_id', 'NO_REQUEST_ID'),
               str(error), exc_info=True)
