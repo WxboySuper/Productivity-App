@@ -76,7 +76,7 @@ class TodoDatabase:
         # Validate database path
         invalid_chars = '<>"|?*&'
         if any(char in str(db_file) for char in invalid_chars):
-            self.log.error("Invalid characters in database path: %s", 
+            self.log.error("Invalid characters in database path: %s",
                            [c for c in str(db_file) if c in invalid_chars])
             raise DatabaseError("Invalid characters in database path", "INVALID_PATH")
 
@@ -336,11 +336,11 @@ class TodoDatabase:
                 task = cursor.fetchone()
 
                 if task is None:
-                    self.log.warning("Task not found [OperationID: %s, TaskID: %d]", 
+                    self.log.warning("Task not found [OperationID: %s, TaskID: %d]",
                                      op_id, task_id)
                     raise DatabaseError("Task not found", "TASK_NOT_FOUND")
 
-                self.log.info("Task retrieved successfully [OperationID: %s, TaskID: %d]", 
+                self.log.info("Task retrieved successfully [OperationID: %s, TaskID: %d]",
                               op_id, task_id)
                 task_list = list(task)
                 task_list[2] = bool(task_list[2])
@@ -349,7 +349,7 @@ class TodoDatabase:
             self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
         except Exception as e:
-            self.log.error("Failed to get task [OperationID: %s] - Error: %s", 
+            self.log.error("Failed to get task [OperationID: %s] - Error: %s",
                            op_id, str(e), exc_info=True)
             raise
 

@@ -52,6 +52,21 @@ def setup_logging(logger_name, log_file=None):
 def log_execution_time(logger):
     """Decorator to log function execution time"""
     def decorator(func):
+        """
+        Inner decorator function that wraps the target function to log its execution time.
+
+        Args:
+            func: The function to be wrapped.
+
+        Returns:
+            wrapper: The wrapped function that includes timing and logging functionality.
+
+        The decorator will:
+        - Log the start of function execution
+        - Time the function execution
+        - Log successful completion with execution time
+        - Log any errors that occur during execution
+        """
         @wraps(func)
         def wrapper(*args, **kwargs):
             start_time = time.time()

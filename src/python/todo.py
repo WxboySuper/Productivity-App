@@ -45,6 +45,16 @@ class TodoList:
 
     @log_execution_time(log)
     def refresh_tasks(self):
+        """
+        Retrieves all tasks from the database and updates the tasks list.
+
+        This method fetches the latest state of tasks from the database and updates
+        the internal tasks list. It ensures the TodoList instance has the most
+        up-to-date information.
+
+        Raises:
+            RuntimeError: If a database error or timeout occurs during the refresh operation.
+        """
         with log_context(log, "refresh_tasks", operation_id=self.generate_operation_id()):
             try:
                 self.tasks = self.db.get_all_tasks()
