@@ -77,7 +77,7 @@ def create_task():
         except BadRequest as e:
             log.warning("Bad request in task creation [RequestID: %s] - Error: %s", 
                        request.request_id, str(e))
-            return jsonify({'error': str(e)}), 400
+            return jsonify({'error': 'Bad request'}), 400
         except Exception as e:
             log.error("Failed to create task [RequestID: %s] - Error: %s", 
                      request.request_id, str(e), exc_info=True)
