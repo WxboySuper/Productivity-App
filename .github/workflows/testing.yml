@@ -53,11 +53,11 @@ jobs:
         - name: Create Coverage Report
           run: |
             coverage report -m
-            coverage xml
+            coverage lcov
 
         - name: DeepSource Test Coverage
           uses: deepsourcelabs/test-coverage-action@master
           with: 
             key: python
-            coverage-file: coverage.xml
+            coverage-file: coverage.lcov
             dsn: ${{ secrets.DEEPSOURCE_DSN }}
