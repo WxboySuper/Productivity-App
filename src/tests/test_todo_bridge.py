@@ -2,10 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 import os
 
-# Add this test before the local import
-def test_working_directory():
-    """Test to print the current working directory before local imports"""
-    print(f"Current working directory: {os.getcwd()}")
+print(f"Current working directory: {os.getcwd()}")
 
 from python.todo_bridge import handle_command
 
