@@ -1,7 +1,75 @@
 from flask import Flask
+import logging
+import os
+import signal
+import sys
+
+os.makedirs("logs", exist_ok=True)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S.%f',
+    handlers=[
+        logging.FileHandler('logs/productivity.log'),
+        logging.StreamHandler()
+    ]
+)
+
+log = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['PORT'] = 5000
+app.config.update(
+    PORT=5000,
+    ENV='development',
+    DEBUG=True
+)
+
+
+def signal_handler(_signum, _frame):
+    """Handle shutdown signals gracefully"""
+    log.info("Received shutdown signal")
+    log.info("Cleaning up resources...")
+    log.debug("No current cleanup implementation")
+    log.info("Server shutdown complete")
+    sys.exit(0)
+
+
+@app.before_request
+def before_request():
+    """Log when the server handles its first request"""
+    if not app.config.get('handled_first_request'):
+        log.info("Handling first request to the server")
+        log.debug("Server configuration: %s", app.config)
+        app.config['handled_first_request'] = True
+
+
+@app.route('/health')
+def health_check():
+    """Basic health check endpoint"""
+    log.debug("Health check requested")
+    return {'status': 'healthy'}, 200
+
 
 if __name__ == '__main__': # pragma: no cover
-    app.run(port=app.config['PORT']) # pragma: no cover
+    try:
+        # Register signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        log.info("Starting Productivity App Server")
+        log.info("Environment: %s", app.config['ENV'])
+        log.info("Debug mode: %s", app.config['DEBUG'])
+        log.info("Server port: %s", app.config['PORT'])
+
+        app.run(
+            host='localhost',
+            port=app.config['PORT']
+        )
+    except Exception as e:
+        log.critical(
+            "Failed to start server - Error: %s",
+            str(e),
+            exc_info=True
+        )
+        sys.exit(1)

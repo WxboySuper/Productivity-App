@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, Mock, call
 import sqlite3
 from datetime import datetime
-from src.python.database import TodoDatabase, DatabaseError
+from python.database import TodoDatabase, DatabaseError
 import os
 import time
 import warnings
@@ -986,22 +986,25 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
                     os.rmdir(log_dir)
 
     @patch('os.makedirs')
-    def test_default_log_directory_creation(self, mock_makedirs):
+    @patch('logging.FileHandler')  # Add this patch
+    def test_default_log_directory_creation(self, mock_file_handler, mock_makedirs):
         """Test that the default logs directory is created."""
         mock_makedirs.side_effect = None
+        mock_file_handler.return_value = Mock()
         
         # Patch sys.modules
         modules_patcher = patch.dict('sys.modules', {})
-        database_patcher = patch('src.python.database', create=True)
+        database_patcher = patch('python.database', create=True)
         
         with modules_patcher, database_patcher:
-            from src.python.database import TodoDatabase # skipcq: PYL-W0404
+            from python.database import TodoDatabase # skipcq: PYL-W0404
             TodoDatabase()  # Create instance to trigger directory creation
         
         mock_makedirs.assert_called_with("logs", exist_ok=True)
 
     @patch('os.makedirs')
-    def test_fallback_log_directory_creation(self, mock_makedirs):
+    @patch('logging.FileHandler')  # Add this patch
+    def test_fallback_log_directory_creation(self, mock_file_handler, mock_makedirs):
         """Test that the fallback user logs directory is created when default fails."""
         user_home = os.path.expanduser("~")
         expected_calls = [
@@ -1009,6 +1012,7 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
             call(os.path.normpath(os.path.join(user_home, "logs")), exist_ok=True)
         ]
         mock_makedirs.side_effect = [PermissionError, None]
+        mock_file_handler.return_value = Mock()
         
         # Create database instance to trigger directory creation
         TodoDatabase()
@@ -1016,13 +1020,16 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
         # Verify both directory creation attempts
         mock_makedirs.assert_has_calls(expected_calls, any_order=False)
 
-    def test_log_directory_exists_after_init(self):
+    @patch('logging.FileHandler')  # Add this patch
+    def test_log_directory_exists_after_init(self, mock_file_handler):
         """Test that at least one log directory exists after initialization."""
+        mock_file_handler.return_value = Mock()
+        
         # Re-import to trigger directory creation
         with patch.dict('sys.modules'):
-            if 'src.python.database' in sys.modules:
-                del sys.modules['src.python.database']
-            from src.python.database import TodoDatabase  # skipcq: PYL-W0404
+            if 'python.database' in sys.modules:
+                del sys.modules['python.database']
+            from python.database import TodoDatabase  # skipcq: PYL-W0404
 
         self.assertTrue(
             os.path.exists(self.default_log_dir) or os.path.exists(self.user_log_dir),
@@ -1030,7 +1037,8 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
         )
 
     @patch('os.makedirs')
-    def test_both_directory_creation_fails(self, mock_makedirs):
+    @patch('logging.FileHandler')  # Add this patch
+    def test_both_directory_creation_fails(self, mock_file_handler, mock_makedirs):
         """Test behavior when both default and fallback directory creation fails."""
         # Setup expected calls
         user_home = os.path.expanduser("~")
@@ -1041,9 +1049,56 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
         
         # Configure mock to always raise PermissionError
         mock_makedirs.side_effect = PermissionError
+        mock_file_handler.return_value = Mock()
         
         # Create database instance - should handle exceptions gracefully
         TodoDatabase()
         
         # Verify both creation attempts were made
         mock_makedirs.assert_has_calls(expected_calls, any_order=False)
+
+class TestDatabaseLogging(BaseTodoDatabaseTest):
+    """Test suite for database logging functionality."""
+
+    TEST_DB_NAME = 'test_logging.db'
+
+    def setUp(self):
+        super().setUp()
+        self.log_file = 'logs/productivity.log'
+
+    def test_operation_logging(self):
+        """Test database operation logging"""
+        with self.assertLogs(self.db.log, level='DEBUG') as log:
+            self.db.add_task("Test Task")
+            
+            log_output = log.output
+            self.assertTrue(any("Database operation" in msg for msg in log_output))
+            self.assertTrue(any("[OperationID:" in msg for msg in log_output))
+            self.assertTrue(any('"title": "Test Task"' in msg for msg in log_output))
+
+    def test_error_logging(self):
+        """Test database error logging"""
+        with self.assertLogs(self.db.log, level='ERROR') as log:
+            try:
+                self.db.get_task(999)
+            except DatabaseError:
+                pass
+
+            log_output = log.output
+            self.assertTrue(any("Task not found" in msg for msg in log_output))
+            self.assertTrue(any("[OperationID:" in msg for msg in log_output))
+
+    def test_connection_error_logging(self):
+        """Test database connection error logging"""
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Test error")
+            
+            with self.assertLogs(self.db.log, level='ERROR') as log:
+                try:
+                    self.db.add_task("Test Task")
+                except DatabaseError:
+                    pass
+
+                log_output = log.output
+                self.assertTrue(any("Database connection error" in msg for msg in log_output))
+                self.assertTrue(any("[OperationID:" in msg for msg in log_output))

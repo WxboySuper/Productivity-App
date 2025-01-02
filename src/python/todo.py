@@ -1,15 +1,12 @@
-from src.python.database import TodoDatabase, DatabaseError
-import logging as log
+from python.database import TodoDatabase, DatabaseError
+from python.logging_config import setup_logging, log_execution_time, log_context
 import os
+import uuid
+import json
 
 os.makedirs("logs", exist_ok=True)
 
-log.basicConfig(
-    level=log.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    filename="logs/todo.log",
-)
+log = setup_logging(__name__)
 
 
 class TodoList:
@@ -39,27 +36,35 @@ class TodoList:
         """
         self.db = db if db is not None else TodoDatabase()
         self.tasks = []
+        log.info("TodoList initialized with %s", self.db.__class__.__name__)
 
+    @staticmethod
+    def generate_operation_id():
+        """Generate unique operation ID for tracking."""
+        return str(uuid.uuid4())
+
+    @log_execution_time(log)
     def refresh_tasks(self):
         """
-        Refreshes the list of tasks by retrieving all tasks
-        from the database and updating the `tasks` attribute.
+        Retrieves all tasks from the database and updates the tasks list.
+
+        This method fetches the latest state of tasks from the database and updates
+        the internal tasks list. It ensures the TodoList instance has the most
+        up-to-date information.
 
         Raises:
-            RuntimeError: If an error occurs while retrieving tasks from the database
+            RuntimeError: If a database error or timeout occurs during the refresh operation.
         """
-        try:
-            self.tasks = self.db.get_all_tasks()
-            log.info("Tasks refreshed successfully")
-        except TimeoutError as e:
-            log.error("Timeout while refreshing tasks: %s", str(e))
-            self.tasks = []
-            raise RuntimeError(f"Connection timeout: {e}") from e
-        except DatabaseError as e:
-            log.error("Failed to refresh tasks: %s", str(e))
-            self.tasks = []  # Reset to empty list on error
-            raise RuntimeError(f"Database error: {str(e)}") from e
+        with log_context(log, "refresh_tasks", operation_id=self.generate_operation_id()):
+            try:
+                self.tasks = self.db.get_all_tasks()
+                log.info("Successfully refreshed %d tasks", len(self.tasks))
+            except (TimeoutError, DatabaseError) as e:
+                log.error("Failed to refresh tasks: %s", str(e))
+                self.tasks = []
+                raise RuntimeError(f"Database operation failed: {str(e)}") from e
 
+    @log_execution_time(log)
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
         """
         Adds a new task to the TodoList and saves it to the database.
@@ -74,22 +79,29 @@ class TodoList:
         Returns:
             int: The ID of the newly added task.
         """
-        if not task or not isinstance(task, str):
-            log.error("Invalid task parameter: task must be a non-empty string")
-            raise ValueError("Task must be a non-empty string")
+        with log_context(log, "add_task", operation_id=self.generate_operation_id()):
+            log.debug("Task details: %s", json.dumps({
+                'task': task,
+                'deadline': str(deadline) if deadline else None,
+                'category': category,
+                'notes': notes,
+                'priority': priority
+            }))
 
-        try:
-            task_id = self.db.add_task(task, deadline, category, notes, priority)
-            self.refresh_tasks()
-            log.info("Task '%s' added successfully!", task)
-            return task_id
-        except TimeoutError as e:
-            log.error("Timeout while adding task: %s", str(e))
-            raise RuntimeError(f"Connection timeout: {e}") from e
-        except DatabaseError as e:
-            log.error("Database error while adding task: %s", str(e))
-            raise RuntimeError(f"Database error: {str(e)}") from e
+            if not task or not isinstance(task, str):
+                log.error("Invalid task parameter - Task must be non-empty string")
+                raise ValueError("Task must be a non-empty string")
 
+            try:
+                task_id = self.db.add_task(task, deadline, category, notes, priority)
+                self.refresh_tasks()
+                log.info("Successfully added task [TaskID: %s]", task_id)
+                return task_id
+            except (TimeoutError, DatabaseError) as e:
+                log.error("Failed to add task - Error: %s", str(e), exc_info=True)
+                raise RuntimeError(f"Database operation failed: {str(e)}") from e
+
+    @log_execution_time(log)
     def mark_completed(self, task_index):
         """
         Marks the task at the specified index as completed in the database and updates the tasks list.
@@ -100,8 +112,13 @@ class TodoList:
         Raises:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
             ValueError: If the task is already marked as completed.
+            RuntimeError: If a database error or timeout occurs.
         """
-        if 0 <= task_index < len(self.tasks):
+        with log_context(log, "mark_completed", operation_id=self.generate_operation_id()):
+            if not 0 <= task_index < len(self.tasks):
+                log.error("Invalid task index [TaskIndex: %d]", task_index)
+                raise IndexError("Invalid task index!")
+
             task_id = self.tasks[task_index][0]
             try:
                 task = self.db.get_task(task_id)
@@ -109,19 +126,20 @@ class TodoList:
                     log.warning("Task is already marked as completed")
                     raise ValueError("Task is already marked as completed")
 
-                self.db.mark_completed(task_id)
-                self.refresh_tasks()
-                log.info("Task marked as completed!")
-            except TimeoutError as e:
-                log.error("Timeout while marking task as completed: %s", str(e))
-                raise RuntimeError(f"Connection timeout: {e}") from e
-            except DatabaseError as e:
-                log.error("Database error while marking task as completed: %s", str(e))
-                raise RuntimeError(f"Database error: {str(e)}") from e
-        else:
-            log.error("Invalid task index!")
-            raise IndexError("Invalid task index!")
+                try:
+                    self.db.mark_completed(task_id)
+                    self.refresh_tasks()
+                    log.info("Task marked as completed [TaskID: %s]", task_id)
+                except (TimeoutError, DatabaseError) as e:
+                    error_msg = str(e)
+                    log.error("Failed to mark task as completed - Error: %s", error_msg, exc_info=True)
+                    raise RuntimeError(f"Database operation failed: {error_msg}") from e
+            except (TimeoutError, DatabaseError) as e:
+                error_msg = str(e)
+                log.error("Failed to get task details - Error: %s", error_msg, exc_info=True)
+                raise RuntimeError(f"Database operation failed: {error_msg}") from e
 
+    @log_execution_time(log)
     def update_task(self, task_index, **updates):
         """
         Updates the task at the specified index with the provided updates.
@@ -135,22 +153,29 @@ class TodoList:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
             RuntimeError: If a database error or timeout occurs.
         """
-        if 0 <= task_index < len(self.tasks):
+        with log_context(log, "update_task", operation_id=self.generate_operation_id()):
+            # Create a copy of updates for logging with datetime converted to string
+            log_updates = updates.copy()
+            if 'deadline' in log_updates and log_updates['deadline'] is not None:
+                log_updates['deadline'] = str(log_updates['deadline'])
+
+            log.debug("Update details: %s", json.dumps(log_updates))
+
+            if not 0 <= task_index < len(self.tasks):
+                log.error("Invalid task index [TaskIndex: %d]", task_index)
+                raise IndexError("Invalid task index!")
+
             task_id = self.tasks[task_index][0]
             try:
                 self.db.update_task(task_id, **updates)
                 self.refresh_tasks()
-                log.info("Task updated successfully!")
-            except TimeoutError as e:
-                log.error("Timeout while updating task: %s", str(e))
-                raise RuntimeError(f"Connection timeout: {e}") from e
-            except DatabaseError as e:
-                log.error("Database error while updating task: %s", str(e))
-                raise RuntimeError(f"Database error: {str(e)}") from e
-        else:
-            log.error("Invalid task index!")
-            raise IndexError("Invalid task index!")
+                log.info("Successfully updated task [TaskID: %s]", task_id)
+            except (TimeoutError, DatabaseError) as e:
+                error_msg = str(e)
+                log.error("Failed to update task - Error: %s", error_msg, exc_info=True)
+                raise RuntimeError(f"Database operation failed: {error_msg}") from e
 
+    @log_execution_time(log)
     def delete_task(self, task_index):
         """
         Deletes the task at the specified index from the database and updates the tasks list.
@@ -162,19 +187,17 @@ class TodoList:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
             RuntimeError: If a database error or timeout occurs.
         """
-        if 0 <= task_index < len(self.tasks):
+        with log_context(log, "delete_task", operation_id=self.generate_operation_id()):
+            if not 0 <= task_index < len(self.tasks):
+                log.error("Invalid task index [TaskIndex: %d]", task_index)
+                raise IndexError("Invalid task index!")
+
             task_id = self.tasks[task_index][0]
             try:
-                task = self.db.get_task(task_id)
                 self.db.delete_task(task_id)
                 self.refresh_tasks()
-                log.info("Task '%s' deleted successfully!", task[1])
-            except TimeoutError as e:
-                log.error("Timeout while deleting task: %s", str(e))
-                raise RuntimeError(f"Connection timeout: {e}") from e
-            except DatabaseError as e:
-                log.error("Database error while deleting task: %s", str(e))
-                raise RuntimeError(f"Database error: {str(e)}") from e
-        else:
-            log.error("Invalid task index!")
-            raise IndexError("Invalid task index!")
+                log.info("Successfully deleted task [TaskID: %s]", task_id)
+            except (TimeoutError, DatabaseError) as e:
+                error_msg = str(e)
+                log.error("Failed to delete task - Error: %s", error_msg, exc_info=True)
+                raise RuntimeError(f"Database operation failed: {error_msg}") from e
