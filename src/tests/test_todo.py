@@ -750,22 +750,21 @@ class TestTodoListDeleteTask(BaseTodoListTest):
         """Verify successful task deletion."""
         # Setup test data
         test_tasks = [
-            (1, "Task 1", None, None, None, None),
-            (2, "Task 2", None, None, None, None)
+            (1, "Task 1", None, None, None, None)
         ]
         self.todo_list.tasks = test_tasks
         
-        # Mock get_task to return task data
+        # Configure mocks in correct order
         self.mock_db.get_task.return_value = test_tasks[0]
         self.todo_list.refresh_tasks = Mock()
 
         # Execute test
         self.todo_list.delete_task(0)
 
-        # Verify behavior
+        # Verify behavior - order is important
+        self.mock_db.get_task.assert_called_once_with(1)
         self.mock_db.delete_task.assert_called_once_with(1)
         self.todo_list.refresh_tasks.assert_called_once()
-        self.mock_db.get_task.assert_called_once_with(1)
 
     def test_delete_task_invalid_index(self):
         """Verify that delete_task raises IndexError for invalid index."""
@@ -802,10 +801,8 @@ class TestTodoListDeleteTask(BaseTodoListTest):
         test_tasks = [(1, "Task 1")]
         self.todo_list.tasks = test_tasks
         
-        # Mock get_task to return task data
-        self.mock_db.get_task.return_value = test_tasks[0]
-        
-        # Configure mock for database error
+        # Configure mocks in correct order
+        self.mock_db.get_task.return_value = (1, "Task 1", None, None, None, None)
         self.mock_db.delete_task.side_effect = DatabaseError("Database error", code=1)
 
         with patch('python.todo.log.error') as mock_log_error:
@@ -837,7 +834,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
                 for call in calls
             ))
             
-            # Verify mock calls
+            # Order of verification is important
             self.mock_db.get_task.assert_called_once_with(1)
             self.mock_db.delete_task.assert_called_once_with(1)
 
@@ -847,10 +844,8 @@ class TestTodoListDeleteTask(BaseTodoListTest):
         test_tasks = [(1, "Task 1")]
         self.todo_list.tasks = test_tasks
         
-        # Mock get_task to return task data
-        self.mock_db.get_task.return_value = test_tasks[0]
-        
-        # Configure mock for timeout
+        # Configure mocks in correct order
+        self.mock_db.get_task.return_value = (1, "Task 1", None, None, None, None)
         self.mock_db.delete_task.side_effect = TimeoutError("Connection timeout")
 
         with patch('python.todo.log.error') as mock_log_error:
@@ -881,7 +876,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
                 for call in calls
             ))
             
-            # Verify mock calls
+            # Order of verification is important
             self.mock_db.get_task.assert_called_once_with(1)
             self.mock_db.delete_task.assert_called_once_with(1)
 
