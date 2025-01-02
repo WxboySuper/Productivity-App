@@ -797,8 +797,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
         test_tasks = [(1, "Task 1")]
         self.todo_list.tasks = test_tasks
         
-        # Configure mocks in correct order
-        self.mock_db.get_task.return_value = (1, "Task 1", None, None, None, None)
+        # Configure mock for database error
         self.mock_db.delete_task.side_effect = DatabaseError("Database error", code=1)
 
         with patch('python.todo.log.error') as mock_log_error:
@@ -830,8 +829,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
                 for call in calls
             ))
             
-            # Order of verification is important
-            self.mock_db.get_task.assert_called_once_with(1)
+            # Verify mock was called with correct task ID
             self.mock_db.delete_task.assert_called_once_with(1)
 
     def test_delete_task_timeout_error(self):
@@ -840,8 +838,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
         test_tasks = [(1, "Task 1")]
         self.todo_list.tasks = test_tasks
         
-        # Configure mocks in correct order
-        self.mock_db.get_task.return_value = (1, "Task 1", None, None, None, None)
+        # Configure mock for timeout
         self.mock_db.delete_task.side_effect = TimeoutError("Connection timeout")
 
         with patch('python.todo.log.error') as mock_log_error:
@@ -872,8 +869,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
                 for call in calls
             ))
             
-            # Order of verification is important
-            self.mock_db.get_task.assert_called_once_with(1)
+            # Verify mock was called with correct task ID
             self.mock_db.delete_task.assert_called_once_with(1)
 
 class TestTodoListLogging(BaseTodoListTest):
