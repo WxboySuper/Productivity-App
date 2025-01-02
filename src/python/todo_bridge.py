@@ -41,7 +41,8 @@ def handle_command(cmd, payload):
     """
     cmd_request_id = generate_request_id()
     log.info("Processing command: %s [RequestID: %s]", cmd, cmd_request_id)
-    log.debug("Command payload: %s [RequestID: %s]", json.dumps(payload), cmd_request_id)
+    safe_payload = {k: v for k, v in payload.items() if k not in ['notes', 'personal_info']}  # Add other sensitive fields  
+    log.debug("Command payload: %s [RequestID: %s]", json.dumps(safe_payload), cmd_request_id) 
 
     try:
         if cmd == "get_tasks":
@@ -51,7 +52,7 @@ def handle_command(cmd, payload):
             return tasks
 
         if cmd == "add_task":
-            if not all(k in payload for k in ['title', 'deadline', 'category']) or not isinstance(payload['title'], str) or not payload['title'].strip():  # skipcq: FLK-E501
+            if 'title' not in payload or not isinstance(payload['title'], str) or not payload['title'].strip():
                 log.error("Missing required fields in payload [RequestID: %s]", cmd_request_id)
                 raise ValueError("Missing required fields in payload")
 
