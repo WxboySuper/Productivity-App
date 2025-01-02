@@ -28,8 +28,8 @@ class TestServer(unittest.TestCase):
     @staticmethod
     def test_server_not_run():
         """Test server doesn't run when not main module."""
-        with unittest.mock.patch('src.python.server.app.run') as mock_run, \
-            unittest.mock.patch('src.python.server.__name__', 'not_main'):
-
+        with unittest.mock.patch('python.server.app.run') as mock_run, \
+            unittest.mock.patch('python.server.__name__', 'not_main'):
+            
             # Verify app.run was not called
             mock_run.assert_not_called()
