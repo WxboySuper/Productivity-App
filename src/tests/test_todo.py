@@ -538,7 +538,7 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
             self.assertTrue(any(
                 call.args[0] == "Failed to mark task as completed - Error: %s" 
                 and call.args[1] == "Connection timeout"
-                and call.kwargs.get('exc_info') == True
+                and call.kwargs.get('exc_info')
                 for call in calls
             ))
             self.assertTrue(any(
@@ -585,7 +585,7 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
             self.assertTrue(any(
                 call.args[0] == "Failed to mark task as completed - Error: %s" 
                 and call.args[1] == "Database error"
-                and call.kwargs.get('exc_info') == True
+                and call.kwargs.get('exc_info')
                 for call in calls
             ))
             self.assertTrue(any(
@@ -667,7 +667,7 @@ class TestTodoListUpdateTask(BaseTodoListTest):
             self.assertTrue(any(
                 call.args[0] == "Failed to update task - Error: %s" 
                 and call.args[1] == "Database error"
-                and call.kwargs.get('exc_info') == True
+                and call.kwargs.get('exc_info')
                 for call in calls
             ))
             self.assertTrue(any(
@@ -705,7 +705,7 @@ class TestTodoListUpdateTask(BaseTodoListTest):
             self.assertTrue(any(
                 call.args[0] == "Failed to update task - Error: %s" 
                 and call.args[1] == "Connection timeout"
-                and call.kwargs.get('exc_info') == True
+                and call.kwargs.get('exc_info')
                 for call in calls
             ))
             self.assertTrue(any(
@@ -815,7 +815,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
             self.assertTrue(any(
                 call.args[0] == "Failed to delete task - Error: %s" 
                 and call.args[1] == "Database error"
-                and call.kwargs.get('exc_info') == True
+                and call.kwargs.get('exc_info')
                 for call in calls
             ))
             self.assertTrue(any(
@@ -855,7 +855,7 @@ class TestTodoListDeleteTask(BaseTodoListTest):
             self.assertTrue(any(
                 call.args[0] == "Failed to delete task - Error: %s" 
                 and call.args[1] == "Connection timeout"
-                and call.kwargs.get('exc_info') == True
+                and call.kwargs.get('exc_info')
                 for call in calls
             ))
             self.assertTrue(any(
