@@ -1,9 +1,21 @@
 import unittest
 from unittest.mock import Mock, patch
+import os
+
+# Add this test before the local import
+def test_working_directory():
+    """Test to print the current working directory before local imports"""
+    print(f"Current working directory: {os.getcwd()}")
+
 from python.todo_bridge import handle_command
 
 class TestTodoBridgeHandleCommand(unittest.TestCase):
     """Test suite for handle_command function in todo_bridge.py"""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up class-level test fixtures"""
+        print(f"Working directory during test setup: {os.getcwd()}")
 
     def setUp(self):
         """Set up test fixtures"""
