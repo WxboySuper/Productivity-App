@@ -42,8 +42,9 @@ def create_task():
     with log_context(log, "create_task", request_id=request.request_id):
         try:
             task_data = request.get_json(silent=True)
+            safe_data = {k: v for k, v in task_data.items() if k not in ['notes']}  # Filter sensitive fields
             log.debug("Received task creation request [RequestID: %s] - Data: %s", 
-                     request.request_id, json.dumps(task_data))
+                     request.request_id, json.dumps(safe_data))
 
             if not task_data:
                 log.warning("No data provided in request [RequestID: %s]", 
