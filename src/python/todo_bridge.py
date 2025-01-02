@@ -52,7 +52,7 @@ def handle_command(cmd, payload):
             return tasks
 
         if cmd == "add_task":
-            if not all(k in payload for k in ['title', 'deadline', 'category']) or not isinstance(payload['title'], str) or not payload['title'].strip():  # skipcq: FLK-E501
+            if 'title' not in payload or not isinstance(payload['title'], str) or not payload['title'].strip():
                 log.error("Missing required fields in payload [RequestID: %s]", cmd_request_id)
                 raise ValueError("Missing required fields in payload")
 

@@ -37,7 +37,7 @@ class TodoDatabase:
     """Database management class for todo tasks."""
 
     def __init__(self, db_file="todo.db"):
-        """Initialize database connection and setup logging."""
+        """Initialize database connection and set up logging."""
         # Set up log directories
         self.default_log_dir = "logs"
         self.user_log_dir = os.path.join(os.path.expanduser("~"), "logs")
