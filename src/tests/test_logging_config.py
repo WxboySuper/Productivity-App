@@ -4,7 +4,6 @@ import json
 import logging
 import tempfile
 from python.logging_config import setup_logging, log_execution_time, log_context
-from unittest.mock import patch, MagicMock, call
 
 class TestLoggingConfig(unittest.TestCase):
     def setUp(self):

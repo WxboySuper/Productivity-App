@@ -28,7 +28,7 @@ def handle_command(cmd, payload):
             log.info("Successfully retrieved %d tasks [RequestID: %s]", len(tasks), cmd_request_id)
             return tasks
 
-        elif cmd == "add_task":
+        if cmd == "add_task":
             if not all(k in payload for k in ['title', 'deadline', 'category']) or not isinstance(payload['title'], str) or not payload['title'].strip():
                 log.error("Missing required fields in payload [RequestID: %s]", cmd_request_id)
                 raise ValueError("Missing required fields in payload")
@@ -41,10 +41,8 @@ def handle_command(cmd, payload):
             )
             log.info("Successfully added task with ID: %s [RequestID: %s]", task_id, cmd_request_id)
             return {"task_id": task_id}
-
-        else:
-            log.error("Unknown command received: %s [RequestID: %s]", cmd, cmd_request_id)
-            raise ValueError(f"Unknown command: {cmd}")
+        log.error("Unknown command received: %s [RequestID: %s]", cmd, cmd_request_id)
+        raise ValueError(f"Unknown command: {cmd}")
 
     except Exception as e:
         log.error("Error processing command %s [RequestID: %s] - Error: %s", 
@@ -55,7 +53,7 @@ if __name__ == "__main__":
     try:
         request_id = generate_request_id()
         log.info("Bridge script started [RequestID: %s]", request_id)
-        
+
         if len(sys.argv) != 3:
             log.error("Invalid number of arguments [RequestID: %s]", request_id)
             raise ValueError("Expected 2 arguments: command and payload")
@@ -69,7 +67,7 @@ if __name__ == "__main__":
 
         log.debug("Executing command: %s with payload: %s [RequestID: %s]", 
                  command, json.dumps(data), request_id)
-        
+
         result = handle_command(command, data)
         print(json.dumps(result))
         log.info("Command executed successfully [RequestID: %s]", request_id)

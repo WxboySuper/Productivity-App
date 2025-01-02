@@ -41,7 +41,7 @@ class TodoDatabase:
         self.default_log_dir = "logs"
         self.user_log_dir = os.path.join(os.path.expanduser("~"), "logs")
         self.log_dir = None
-        
+
         # Try default directory first
         try:
             os.makedirs(self.default_log_dir, exist_ok=True)
@@ -54,7 +54,7 @@ class TodoDatabase:
             except PermissionError:
                 # If both fail, use current directory
                 self.log_dir = "."
-                
+
         # Set up logging
         log_file_path = os.path.join(self.log_dir, 'productivity.log')
         logging.basicConfig(
@@ -67,7 +67,7 @@ class TodoDatabase:
             ]
         )
         self.log = logging.getLogger(__name__)
-        
+
         # Initialize database
         if db_file is None:
             db_file = os.getenv('DB_PATH', 'todo.db')
@@ -332,7 +332,7 @@ class TodoDatabase:
                 cursor = conn.cursor()
                 cursor.execute('SELECT * FROM tasks WHERE id = ?', (task_id,))
                 task = cursor.fetchone()
-                
+
                 if task is None:
                     self.log.warning("Task not found [OperationID: %s, TaskID: %d]", 
                                    op_id, task_id)

@@ -10,23 +10,23 @@ os.makedirs("logs", exist_ok=True)
 def setup_logging(logger_name, log_file=None):
     """
     Setup logging configuration.
-    
+
     Args:
         logger_name (str): Name of the logger
         log_file (str, optional): Custom log file path
-    
+
     Returns:
         logging.Logger: Configured logger instance
     """
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
-    
+
     # Create formatter
     formatter = logging.Formatter(
         '[%(levelname)s] [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
         datefmt='%Y-%m-%d %H:%M:%S.%f'
     )
-    
+
     # Setup file handler
     if log_file is None:
         log_dir = "logs"
@@ -34,17 +34,17 @@ def setup_logging(logger_name, log_file=None):
         log_file = os.path.join(log_dir, "productivity.log")
     else:
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        
+
     from logging.handlers import RotatingFileHandler
     file_handler = RotatingFileHandler(log_file, maxBytes=10*1024, backupCount=5)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    
+
     # Setup console handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    
+
     return logger
 
 def log_execution_time(logger):
@@ -78,7 +78,7 @@ def log_context(logger, operation, **context):
     op_id = context.get('operation_id', str(time.time()))
     logger.info("Starting %s [OperationID: %s]", operation, op_id)
     logger.debug("Context: %s", context)
-    
+
     try:
         yield op_id
         logger.info("Completed %s [OperationID: %s]", operation, op_id)

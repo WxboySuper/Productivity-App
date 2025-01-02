@@ -37,7 +37,8 @@ class TodoList:
         self.tasks = []
         log.info("TodoList initialized with %s", self.db.__class__.__name__)
 
-    def generate_operation_id(self):
+    @staticmethod
+    def generate_operation_id():
         """Generate unique operation ID for tracking."""
         return str(uuid.uuid4())
 
@@ -103,7 +104,7 @@ class TodoList:
             RuntimeError: If a database error or timeout occurs.
         """
         with log_context(log, "mark_completed", operation_id=self.generate_operation_id()):
-            if not (0 <= task_index < len(self.tasks)):
+            if not 0 <= task_index < len(self.tasks):
                 log.error("Invalid task index [TaskIndex: %d]", task_index)
                 raise IndexError("Invalid task index!")
 
@@ -146,10 +147,10 @@ class TodoList:
             log_updates = updates.copy()
             if 'deadline' in log_updates and log_updates['deadline'] is not None:
                 log_updates['deadline'] = str(log_updates['deadline'])
-            
+
             log.debug("Update details: %s", json.dumps(log_updates))
 
-            if not (0 <= task_index < len(self.tasks)):
+            if not 0 <= task_index < len(self.tasks):
                 log.error("Invalid task index [TaskIndex: %d]", task_index)
                 raise IndexError("Invalid task index!")
 
@@ -176,7 +177,7 @@ class TodoList:
             RuntimeError: If a database error or timeout occurs.
         """
         with log_context(log, "delete_task", operation_id=self.generate_operation_id()):
-            if not (0 <= task_index < len(self.tasks)):
+            if not 0 <= task_index < len(self.tasks):
                 log.error("Invalid task index [TaskIndex: %d]", task_index)
                 raise IndexError("Invalid task index!")
 

@@ -63,7 +63,7 @@ if __name__ == '__main__': # pragma: no cover
         log.info("Environment: %s", app.config['ENV'])
         log.info("Debug mode: %s", app.config['DEBUG'])
         log.info("Server port: %s", app.config['PORT'])
-        
+
         app.run(
             host='localhost',
             port=app.config['PORT']

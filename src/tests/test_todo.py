@@ -3,7 +3,6 @@ import os
 import unittest
 from datetime import datetime
 from unittest.mock import Mock, patch, call
-import logging
 from python.database import DatabaseError
 from python.logging_config import setup_logging
 
