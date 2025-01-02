@@ -4,7 +4,7 @@ import os
 
 print(f"Current working directory: {os.getcwd()}")
 
-from python.todo_bridge import handle_command
+from src.python.todo_bridge import handle_command
 
 class TestTodoBridgeHandleCommand(unittest.TestCase):
     """Test suite for handle_command function in todo_bridge.py"""
