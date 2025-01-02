@@ -52,7 +52,6 @@ jobs:
 
         - name: Create Coverage Report
           run: |
-            cd ..
             coverage report -m
             coverage xml
 
