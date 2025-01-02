@@ -3,18 +3,11 @@ import logging
 import os
 import signal
 import sys
+from python.logging_config import setup_logging
 
 os.makedirs("logs", exist_ok=True)
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S.%f',
-    handlers=[
-        logging.FileHandler('logs/productivity.log'),
-        logging.StreamHandler()
-    ]
-)
+setup_logging(__name__)
 
 log = logging.getLogger(__name__)
 

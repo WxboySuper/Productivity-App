@@ -41,7 +41,8 @@ def handle_command(cmd, payload):
     """
     cmd_request_id = generate_request_id()
     log.info("Processing command: %s [RequestID: %s]", cmd, cmd_request_id)
-    log.debug("Command payload: %s [RequestID: %s]", json.dumps(payload), cmd_request_id)
+    safe_payload = {k: v for k, v in payload.items() if k not in ['notes', 'personal_info']}  # Add other sensitive fields  
+    log.debug("Command payload: %s [RequestID: %s]", json.dumps(safe_payload), cmd_request_id) 
 
     try:
         if cmd == "get_tasks":

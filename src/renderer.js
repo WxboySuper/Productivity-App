@@ -20,8 +20,9 @@ function runPythonCommand(command, data) {
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
             if (err) {
-                logOperation('error', 'pythonCommandFailed', { requestId, command, error: err.message }, err)
-                reject(new Error(`Failed to execute Python command '${command}': ${err.message}`))
+                const sanitizedCommand = typeof command === 'string' ? command.split(' ')[0] : 'unknown';
+                logOperation('error', 'pythonCommandFailed', { requestId, command: sanitizedCommand }, err)
+                reject(new Error(`Command execution failed: ${err.message}`))
                 return
             }
             if (!results || results.length === 0) {

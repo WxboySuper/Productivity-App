@@ -42,8 +42,8 @@ jobs:
 
         - name: Set PYTHONPATH
           run: |
-            echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
-            echo "Updated PYTHONPATH=$PYTHONPATH:$(pwd)"
+            echo "PYTHONPATH=$PYTHONPATH:\"$(pwd)\"" >> $GITHUB_ENV
+            echo "Updated PYTHONPATH=$PYTHONPATH:\"$(pwd)\""
 
         - name: Test with unittest
           run: |
