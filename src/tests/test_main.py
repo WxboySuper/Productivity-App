@@ -80,10 +80,19 @@ class TestFlaskAPI(unittest.TestCase):
 
     def test_create_task_invalid_json(self):
         """Test POST /tasks with invalid JSON"""
-        response = self.app.post('/tasks',
-                               data='invalid json',
-                               content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        with patch('python.main.todo') as mock_todo:
+            # Ensure mock is set up properly to not interfere with error handling
+            mock_todo.add_task.return_value = 1
+            
+            response = self.app.post('/tasks',
+                                   data='invalid json',
+                                   content_type='application/json')
+            
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(json.loads(response.data), {'error': 'No data provided'})
+            
+            # Verify mock was not called since request should fail before reaching todo.add_task
+            mock_todo.add_task.assert_not_called()
 
     def test_create_task_missing_title(self):
         """Test POST /tasks with missing title field"""

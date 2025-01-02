@@ -41,15 +41,26 @@ def get_tasks():
 def create_task():
     with log_context(log, "create_task", request_id=request.request_id):
         try:
-            task_data = request.get_json(silent=True)
-            safe_data = {k: v for k, v in task_data.items() if k not in ['notes']}  # Filter sensitive fields
-            log.debug("Received task creation request [RequestID: %s] - Data: %s", 
-                     request.request_id, json.dumps(safe_data))
+            if not request.is_json:
+                log.warning("Invalid content type or missing data [RequestID: %s]", 
+                          request.request_id)
+                return jsonify({'error': 'No data provided'}), 400
+
+            try:
+                task_data = request.get_json()
+            except BadRequest:
+                log.warning("Invalid JSON or missing data [RequestID: %s]", 
+                          request.request_id)
+                return jsonify({'error': 'No data provided'}), 400
 
             if not task_data:
                 log.warning("No data provided in request [RequestID: %s]", 
                           request.request_id)
                 return jsonify({'error': 'No data provided'}), 400
+
+            safe_data = {k: v for k, v in task_data.items() if k not in ['notes']}
+            log.debug("Received task creation request [RequestID: %s] - Data: %s", 
+                     request.request_id, json.dumps(safe_data))
 
             # Validate required fields
             if 'title' not in task_data:
