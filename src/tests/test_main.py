@@ -1,4 +1,4 @@
-from src.python.main import app
+from python.main import app
 import unittest
 from unittest.mock import patch
 from datetime import datetime
@@ -11,21 +11,25 @@ class TestFlaskAPI(unittest.TestCase):
         
     def test_get_tasks(self):
         """Test GET /tasks endpoint"""
-        with patch('src.python.main.todo') as mock_todo:
+        with patch('python.main.todo') as mock_todo:
             # Mock the tasks property with lists instead of tuples
-            mock_todo.tasks = [
+            test_tasks = [
                 [1, "Task 1", None, None, None, None],
                 [2, "Task 2", None, "Work", None, 1]
             ]
+            mock_todo.tasks = test_tasks
 
             response = self.app.get('/tasks')
+            
+            # Convert response bytes to string and then parse JSON
+            response_data = json.loads(response.data.decode('utf-8'))
 
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(json.loads(response.data), mock_todo.tasks)
+            self.assertEqual(response_data, test_tasks)
 
     def test_create_task_minimal(self):
         """Test POST /tasks with minimal task data"""
-        with patch('src.python.main.todo') as mock_todo:
+        with patch('python.main.todo') as mock_todo:
             mock_todo.add_task.return_value = 1
             
             task_data = {
@@ -48,7 +52,7 @@ class TestFlaskAPI(unittest.TestCase):
 
     def test_create_task_full(self):
         """Test POST /tasks with full task data"""
-        with patch('src.python.main.todo') as mock_todo:
+        with patch('python.main.todo') as mock_todo:
             mock_todo.add_task.return_value = 1
             
             deadline = datetime.now().isoformat()
@@ -107,7 +111,7 @@ class TestFlaskAPI(unittest.TestCase):
 
     def test_get_tasks_error(self):
         """Test GET /tasks when an error occurs"""
-        with patch('src.python.main.todo') as mock_todo:
+        with patch('python.main.todo') as mock_todo:
             # Mock the tasks property to raise an exception
             type(mock_todo).tasks = property(lambda x: (_ for _ in ()).throw(Exception("Test error")))
             
@@ -118,7 +122,7 @@ class TestFlaskAPI(unittest.TestCase):
 
     def test_create_task_server_error(self):
         """Test POST /tasks when server error occurs"""
-        with patch('src.python.main.todo') as mock_todo:
+        with patch('python.main.todo') as mock_todo:
             mock_todo.add_task.side_effect = Exception("Internal error")
             
             task_data = {

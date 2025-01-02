@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
-from src.python.todo import TodoList
+from python.todo import TodoList
 from werkzeug.exceptions import BadRequest
-from src.python.logging_config import setup_logging, log_execution_time, log_context
+from python.logging_config import setup_logging, log_execution_time, log_context
 import os
 import uuid
 import json

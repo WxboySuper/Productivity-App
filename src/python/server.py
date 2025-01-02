@@ -36,11 +36,16 @@ def signal_handler(signum, frame):
     log.info("Server shutdown complete")
     sys.exit(0)
 
-@app.before_first_request
-def before_first_request():
+_is_first_request = True
+
+@app.before_request
+def before_request():
     """Log when the server handles its first request"""
-    log.info("Handling first request to the server")
-    log.debug("Server configuration: %s", app.config)
+    global _is_first_request
+    if _is_first_request:
+        log.info("Handling first request to the server")
+        log.debug("Server configuration: %s", app.config)
+        _is_first_request = False
 
 @app.route('/health')
 def health_check():

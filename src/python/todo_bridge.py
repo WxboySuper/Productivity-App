@@ -1,6 +1,6 @@
 import sys
 import json
-from src.python.todo import TodoList
+from python.todo import TodoList
 import logging
 import uuid
 import os
@@ -43,8 +43,8 @@ def handle_command(cmd, payload):
             log.info("Adding new task: %s [RequestID: %s]", payload["title"], cmd_request_id)
             task_id = todo.add_task(
                 payload["title"],
-                deadline=payload.get("deadline"),
-                category=payload.get("category")
+                payload.get("deadline"),
+                payload.get("category")
             )
             log.info("Successfully added task with ID: %s [RequestID: %s]", task_id, cmd_request_id)
             return {"task_id": task_id}

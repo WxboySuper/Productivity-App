@@ -37,20 +37,38 @@ class TodoDatabase:
 
     def __init__(self, db_file="todo.db"):
         """Initialize database connection and setup logging."""
-        os.makedirs("logs", exist_ok=True)
-
+        # Set up log directories
+        self.default_log_dir = "logs"
+        self.user_log_dir = os.path.join(os.path.expanduser("~"), "logs")
+        self.log_dir = None
+        
+        # Try default directory first
+        try:
+            os.makedirs(self.default_log_dir, exist_ok=True)
+            self.log_dir = self.default_log_dir
+        except PermissionError:
+            # Try user's home directory as fallback
+            try:
+                os.makedirs(self.user_log_dir, exist_ok=True)
+                self.log_dir = self.user_log_dir
+            except PermissionError:
+                # If both fail, use current directory
+                self.log_dir = "."
+                
+        # Set up logging
+        log_file_path = os.path.join(self.log_dir, 'productivity.log')
         logging.basicConfig(
             level=logging.INFO,
             format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
             datefmt='%Y-%m-%d %H:%M:%S.%f',
             handlers=[
-                logging.FileHandler('logs/productivity.log'),
+                logging.FileHandler(log_file_path),
                 logging.StreamHandler()
             ]
         )
-
         self.log = logging.getLogger(__name__)
         
+        # Initialize database
         if db_file is None:
             db_file = os.getenv('DB_PATH', 'todo.db')
 
@@ -91,9 +109,8 @@ class TodoDatabase:
                 self._conn.close()
                 self._conn = None
         except Exception as e:
-            self.log.error("Error closing database connection: %s: %s",
-                      type(e).__name__, str(e))
-
+            logging.error("Error closing database connection: %s: %s",
+                        type(e).__name__, str(e))
     @staticmethod
     def generate_operation_id():
         """Generate unique operation ID for tracking."""
@@ -185,6 +202,12 @@ class TodoDatabase:
                 self.log.info("Task created successfully [OperationID: %s, TaskID: %d]", 
                             op_id, task_id)
                 return task_id
+        except sqlite3.OperationalError as e:
+            self.log.error("Database connection error [OperationID: %s]: %s", op_id, str(e))
+            raise DatabaseError("Database connection error", "DB_CONN_ERROR") from e
+        except sqlite3.Error as e:
+            self.log.error("Error adding task: %s", e)
+            raise DatabaseError("An error occurred while adding the task", "DB_QUERY_ERROR") from e
         except Exception as e:
             self.log.error("Failed to add task [OperationID: %s] - Error: %s", 
                          op_id, str(e), exc_info=True)
@@ -313,13 +336,16 @@ class TodoDatabase:
                 if task is None:
                     self.log.warning("Task not found [OperationID: %s, TaskID: %d]", 
                                    op_id, task_id)
-                    raise DatabaseError(f"Task with ID {task_id} not found", "TASK_NOT_FOUND")
+                    raise DatabaseError("Task not found", "TASK_NOT_FOUND")
 
                 self.log.info("Task retrieved successfully [OperationID: %s, TaskID: %d]", 
                             op_id, task_id)
                 task_list = list(task)
                 task_list[2] = bool(task_list[2])
                 return tuple(task_list)
+        except sqlite3.OperationalError as e:
+            self.log.error("Database connection error: %s", e)
+            raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
         except Exception as e:
             self.log.error("Failed to get task [OperationID: %s] - Error: %s", 
                          op_id, str(e), exc_info=True)

@@ -1,5 +1,5 @@
-from src.python.database import TodoDatabase, DatabaseError
-from src.python.logging_config import setup_logging, log_execution_time, log_context
+from python.database import TodoDatabase, DatabaseError
+from python.logging_config import setup_logging, log_execution_time, log_context
 import os
 import uuid
 import json
@@ -47,10 +47,10 @@ class TodoList:
             try:
                 self.tasks = self.db.get_all_tasks()
                 log.info("Successfully refreshed %d tasks", len(self.tasks))
-            except Exception as e:
-                log.error("Failed to refresh tasks - Error: %s", str(e), exc_info=True)
+            except (TimeoutError, DatabaseError) as e:
+                log.error("Failed to refresh tasks: %s", str(e))
                 self.tasks = []
-                raise
+                raise RuntimeError(f"Database operation failed: {str(e)}") from e
 
     @log_execution_time(log)
     def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
@@ -100,6 +100,7 @@ class TodoList:
         Raises:
             IndexError: If the `task_index` is out of range for the `self.tasks` list.
             ValueError: If the task is already marked as completed.
+            RuntimeError: If a database error or timeout occurs.
         """
         with log_context(log, "mark_completed", operation_id=self.generate_operation_id()):
             if not (0 <= task_index < len(self.tasks)):
@@ -113,12 +114,18 @@ class TodoList:
                     log.warning("Task is already marked as completed")
                     raise ValueError("Task is already marked as completed")
 
-                self.db.mark_completed(task_id)
-                self.refresh_tasks()
-                log.info("Task marked as completed [TaskID: %s]", task_id)
-            except Exception as e:
-                log.error("Failed to mark task as completed - Error: %s", str(e), exc_info=True)
-                raise
+                try:
+                    self.db.mark_completed(task_id)
+                    self.refresh_tasks()
+                    log.info("Task marked as completed [TaskID: %s]", task_id)
+                except (TimeoutError, DatabaseError) as e:
+                    error_msg = str(e)
+                    log.error("Failed to mark task as completed - Error: %s", error_msg, exc_info=True)
+                    raise RuntimeError(f"Database operation failed: {error_msg}") from e
+            except (TimeoutError, DatabaseError) as e:
+                error_msg = str(e)
+                log.error("Failed to get task details - Error: %s", error_msg, exc_info=True)
+                raise RuntimeError(f"Database operation failed: {error_msg}") from e
 
     @log_execution_time(log)
     def update_task(self, task_index, **updates):
@@ -135,7 +142,12 @@ class TodoList:
             RuntimeError: If a database error or timeout occurs.
         """
         with log_context(log, "update_task", operation_id=self.generate_operation_id()):
-            log.debug("Update details: %s", json.dumps(updates))
+            # Create a copy of updates for logging with datetime converted to string
+            log_updates = updates.copy()
+            if 'deadline' in log_updates and log_updates['deadline'] is not None:
+                log_updates['deadline'] = str(log_updates['deadline'])
+            
+            log.debug("Update details: %s", json.dumps(log_updates))
 
             if not (0 <= task_index < len(self.tasks)):
                 log.error("Invalid task index [TaskIndex: %d]", task_index)
@@ -146,9 +158,10 @@ class TodoList:
                 self.db.update_task(task_id, **updates)
                 self.refresh_tasks()
                 log.info("Successfully updated task [TaskID: %s]", task_id)
-            except Exception as e:
-                log.error("Failed to update task - Error: %s", str(e), exc_info=True)
-                raise
+            except (TimeoutError, DatabaseError) as e:
+                error_msg = str(e)
+                log.error("Failed to update task - Error: %s", error_msg, exc_info=True)
+                raise RuntimeError(f"Database operation failed: {error_msg}") from e
 
     @log_execution_time(log)
     def delete_task(self, task_index):
@@ -169,10 +182,11 @@ class TodoList:
 
             task_id = self.tasks[task_index][0]
             try:
-                task = self.db.get_task(task_id)
+                task = self.db.get_task(task_id)  # Get task before deletion
                 self.db.delete_task(task_id)
                 self.refresh_tasks()
                 log.info("Successfully deleted task [TaskID: %s]", task_id)
-            except Exception as e:
-                log.error("Failed to delete task - Error: %s", str(e), exc_info=True)
-                raise
+            except (TimeoutError, DatabaseError) as e:
+                error_msg = str(e)
+                log.error("Failed to delete task - Error: %s", error_msg, exc_info=True)
+                raise RuntimeError(f"Database operation failed: {error_msg}") from e

@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, Mock, call
 import sqlite3
 from datetime import datetime
-from src.python.database import TodoDatabase, DatabaseError
+from python.database import TodoDatabase, DatabaseError
 import os
 import time
 import warnings
@@ -1047,3 +1047,48 @@ class TestTodoDatabaseLogDirectory(BaseTodoDatabaseTest):
         
         # Verify both creation attempts were made
         mock_makedirs.assert_has_calls(expected_calls, any_order=False)
+
+class TestDatabaseLogging(BaseTodoDatabaseTest):
+    """Test suite for database logging functionality."""
+
+    TEST_DB_NAME = 'test_logging.db'
+
+    def setUp(self):
+        super().setUp()
+        self.log_file = 'logs/productivity.log'
+
+    def test_operation_logging(self):
+        """Test database operation logging"""
+        with self.assertLogs(self.db.log, level='DEBUG') as log:
+            self.db.add_task("Test Task")
+            
+            log_output = log.output
+            self.assertTrue(any("Database operation" in msg for msg in log_output))
+            self.assertTrue(any("[OperationID:" in msg for msg in log_output))
+            self.assertTrue(any('"title": "Test Task"' in msg for msg in log_output))
+
+    def test_error_logging(self):
+        """Test database error logging"""
+        with self.assertLogs(self.db.log, level='ERROR') as log:
+            try:
+                self.db.get_task(999)
+            except DatabaseError:
+                pass
+
+            log_output = log.output
+            self.assertTrue(any("Task not found" in msg for msg in log_output))
+            self.assertTrue(any("[OperationID:" in msg for msg in log_output))
+
+    def test_connection_error_logging(self):
+        """Test database connection error logging"""
+        with patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = sqlite3.OperationalError("Test error")
+            
+            with self.assertLogs(self.db.log, level='ERROR') as log:
+                try:
+                    self.db.add_task("Test Task")
+                except DatabaseError:
+                    pass
+
+                log_output = log.output
+                self.assertTrue(any("Database connection error" in msg for msg in log_output))

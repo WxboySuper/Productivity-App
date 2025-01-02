@@ -1,4 +1,4 @@
-from src.python.server import app
+from python.server import app
 import unittest
 
 class TestServer(unittest.TestCase):

@@ -1,10 +1,11 @@
-from src.python.todo import TodoList
+from python.todo import TodoList
 import os
 import unittest
 from datetime import datetime
 from unittest.mock import Mock, patch, call
 import logging
-from src.python.database import DatabaseError
+from python.database import DatabaseError
+from python.logging_config import setup_logging
 
 #skipcq: PTC-W0046
 class BaseTodoListTest(unittest.TestCase):
@@ -199,15 +200,36 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
         # Configure mock with correct DatabaseError constructor
         self.mock_db.get_all_tasks.side_effect = DatabaseError("Database error", code=1)
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.refresh_tasks()
 
+            self.assertIn("Database operation failed", str(context.exception))
             self.assertIn("Database error", str(context.exception))
             self.assertEqual(self.todo_list.tasks, [])
-            mock_log_error.assert_called_once_with(
-                "Failed to refresh tasks: %s", "Database error"
-            )
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to refresh tasks: %s" 
+                and "Database error" in call.args[1]
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'refresh_tasks'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'refresh_tasks'
+                for call in calls
+            ))
+
+            # Verify mock was called
             self.mock_db.get_all_tasks.assert_called_once()
 
     def test_refresh_tasks_connection_timeout(self):
@@ -215,14 +237,37 @@ class TestTodoListRefreshTasks(BaseTodoListTest):
         # Configure mock
         self.mock_db.get_all_tasks.side_effect = TimeoutError("Connection timeout")
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.refresh_tasks()
 
-            # Verify error handling - moved outside the assertRaises but inside the patch
+            # Verify error handling
+            self.assertIn("Database operation failed", str(context.exception))
             self.assertIn("Connection timeout", str(context.exception))
             self.assertEqual(self.todo_list.tasks, [])
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to refresh tasks: %s" 
+                and "Connection timeout" in call.args[1]
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'refresh_tasks'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'refresh_tasks'
+                for call in calls
+            ))
+            
+            # Verify mock was called
             self.mock_db.get_all_tasks.assert_called_once()
 
     def test_refresh_tasks_state_change(self):
@@ -264,17 +309,26 @@ class TestTodoListAddTask(BaseTodoListTest):
 
     def setUp(self):
         super().setUp()
+        # Set up mock tasks as a list for len() to work
+        self.todo_list.tasks = []
 
     def test_add_task_basic(self):
         """Verify basic task creation with minimal parameters."""
         self.mock_db.add_task.return_value = self.TASK_IDS['BASIC']
+        # Mock get_all_tasks to return a list for refresh_tasks
+        self.mock_db.get_all_tasks.return_value = [(1, "Test task", None, None, None, None)]
+        
         task_id = self.todo_list.add_task(self.BASIC_TASK)
+        
         self.mock_db.add_task.assert_called_once_with(self.BASIC_TASK, None, None, None, None)
         self.assertEqual(task_id, self.TASK_IDS['BASIC'])
 
     def test_add_task_with_all_parameters(self):
         """Verify task creation with all available parameters."""
+        # Setup mocks
         self.mock_db.add_task.return_value = self.TASK_IDS['FULL']
+        self.mock_db.get_all_tasks.return_value = [(1, "Test task", None, None, None, None)]
+        
         deadline = datetime.now()
         task_data = self.FULL_TASK_DATA.copy()
 
@@ -286,6 +340,7 @@ class TestTodoListAddTask(BaseTodoListTest):
             priority=task_data['priority']
         )
 
+        # Verify add_task call
         self.mock_db.add_task.assert_called_once_with(
             task_data['title'],
             deadline,
@@ -293,11 +348,15 @@ class TestTodoListAddTask(BaseTodoListTest):
             task_data['notes'],
             task_data['priority']
         )
+        # Verify get_all_tasks was called for refresh
+        self.mock_db.get_all_tasks.assert_called_once()
         self.assertEqual(task_id, self.TASK_IDS['FULL'])
 
     def test_add_task_with_partial_parameters(self):
         """Verify task creation with partial parameters."""
+        # Setup mocks
         self.mock_db.add_task.return_value = self.TASK_IDS['PARTIAL']
+        self.mock_db.get_all_tasks.return_value = [(1, "Test task", None, None, None, None)]
         task_data = self.PARTIAL_TASK_DATA
 
         task_id = self.todo_list.add_task(
@@ -306,6 +365,7 @@ class TestTodoListAddTask(BaseTodoListTest):
             priority=task_data['priority']
         )
 
+        # Verify add_task call
         self.mock_db.add_task.assert_called_once_with(
             task_data['title'],
             None,
@@ -313,21 +373,28 @@ class TestTodoListAddTask(BaseTodoListTest):
             None,
             task_data['priority']
         )
+        # Verify get_all_tasks was called for refresh
+        self.mock_db.get_all_tasks.assert_called_once()
         self.assertEqual(task_id, self.TASK_IDS['PARTIAL'])
 
     def test_add_task_success_message(self):
         """Verify success message is logged after task creation."""
-        # Reset logging configuration
-        logging.getLogger().handlers = []
+        # Ensure logging is configured
+        setup_logging(__name__)
+        
+        # Setup mocks
+        self.mock_db.add_task.return_value = self.TASK_IDS['SUCCESS_MSG']
+        self.mock_db.get_all_tasks.return_value = [(1, "Test task", None, None, None, None)]
 
-        with patch('logging.info') as log_info:
+        with self.assertLogs('python.todo', level='INFO') as log:
             self.todo_list.add_task(self.BASIC_TASK)
 
             expected_calls = [
-                call('Tasks refreshed successfully'),
-                call("Task '%s' added successfully!", self.BASIC_TASK)
+                "INFO:python.todo:Successfully refreshed 1 tasks",
+                "INFO:python.todo:Successfully added task [TaskID: 4]"
             ]
-            log_info.assert_has_calls(expected_calls, any_order=False)
+            for expected_call in expected_calls:
+                self.assertTrue(any(expected_call in message for message in log.output))
 
     def test_add_task_refresh_called(self):
         """Verify task list is refreshed after adding a task."""
@@ -339,24 +406,62 @@ class TestTodoListAddTask(BaseTodoListTest):
     def test_add_task_database_error(self):
         """Verify database error handling during task addition."""
         self.mock_db.add_task.side_effect = DatabaseError("Database error", code=1)
-
-        with patch('logging.error') as mock_log_error:
+        
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.add_task(self.BASIC_TASK)
 
             self.assertIn("Database error", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to add task - Error: %s" 
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'add_task'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'add_task'
+                for call in calls
+            ))
 
     def test_add_task_timeout_error(self):
         """Verify timeout error handling during task addition."""
         self.mock_db.add_task.side_effect = TimeoutError("Connection timeout")
-
-        with patch('logging.error') as mock_log_error:
+        
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.add_task(self.BASIC_TASK)
 
             self.assertIn("Connection timeout", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to add task - Error: %s" 
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'add_task'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'add_task'
+                for call in calls
+            ))
 
     def test_add_task_invalid_input(self):
         """Verify invalid input handling."""
@@ -418,18 +523,42 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
         # Configure mock for timeout
         self.mock_db.mark_completed.side_effect = TimeoutError("Connection timeout")
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.mark_completed(0)
 
+            self.assertIn("Database operation failed", str(context.exception))
             self.assertIn("Connection timeout", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to mark task as completed - Error: %s" 
+                and call.args[1] == "Connection timeout"
+                and call.kwargs.get('exc_info') == True
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'mark_completed'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'mark_completed'
+                for call in calls
+            ))
+            
+            # Verify mock calls
             self.mock_db.get_task.assert_called_once_with(1)
+            self.mock_db.mark_completed.assert_called_once_with(1)
 
     def test_mark_completed_database_error(self):
         """Verify database error handling during task completion."""
         # Set up test data with complete task tuple structure
-        # (id, title, deadline, category, notes, priority, completed)
         test_tasks = [
             (1, "Task 1", None, None, None, None, False),
             (2, "Task 2", None, None, None, None, False)
@@ -442,13 +571,36 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
         # Configure mock for database error
         self.mock_db.mark_completed.side_effect = DatabaseError("Database error", code=1)
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.mark_completed(0)
 
             self.assertIn("Database error", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to mark task as completed - Error: %s" 
+                and call.args[1] == "Database error"
+                and call.kwargs.get('exc_info') == True
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'mark_completed'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'mark_completed'
+                for call in calls
+            ))
+
             self.mock_db.get_task.assert_called_once_with(1)
+            self.mock_db.mark_completed.assert_called_once_with(1)
 
     def test_mark_completed_already_completed(self):
         """Verify that mark_completed raises ValueError when task is already completed."""
@@ -460,7 +612,7 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
         self.mock_db.get_task.return_value = (1, "Task 1", None, None, None, None, True)
 
         # Verify ValueError is raised
-        with patch('logging.warning') as mock_log_warning:
+        with patch('python.todo.log.warning') as mock_log_warning:
             with self.assertRaises(ValueError) as context:
                 self.todo_list.mark_completed(0)
 
@@ -500,12 +652,37 @@ class TestTodoListUpdateTask(BaseTodoListTest):
         self.todo_list.tasks = test_tasks
         self.mock_db.update_task.side_effect = DatabaseError("Database error", code=1)
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.update_task(0, task="Updated")
                 
+            self.assertIn("Database operation failed", str(context.exception))
             self.assertIn("Database error", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to update task - Error: %s" 
+                and call.args[1] == "Database error"
+                and call.kwargs.get('exc_info') == True
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'update_task'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'update_task'
+                for call in calls
+            ))
+
+            # Verify mock was called with correct arguments
+            self.mock_db.update_task.assert_called_once_with(1, task="Updated")
 
     def test_update_task_timeout_error(self):
         """Verify timeout error handling during task update."""
@@ -513,12 +690,37 @@ class TestTodoListUpdateTask(BaseTodoListTest):
         self.todo_list.tasks = test_tasks
         self.mock_db.update_task.side_effect = TimeoutError("Connection timeout")
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.update_task(0, task="Updated")
 
+            self.assertIn("Database operation failed", str(context.exception))
             self.assertIn("Connection timeout", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to update task - Error: %s" 
+                and call.args[1] == "Connection timeout"
+                and call.kwargs.get('exc_info') == True
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'update_task'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'update_task'
+                for call in calls
+            ))
+
+            # Verify mock was called with correct arguments
+            self.mock_db.update_task.assert_called_once_with(1, task="Updated")
 
     def test_update_task_multiple_fields(self):
         """Verify updating multiple task fields at once."""
@@ -567,12 +769,32 @@ class TestTodoListDeleteTask(BaseTodoListTest):
 
     def test_delete_task_invalid_index(self):
         """Verify that delete_task raises IndexError for invalid index."""
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(IndexError) as context:
                 self.todo_list.delete_task(-1)
                 
             self.assertIn("Invalid task index", str(context.exception))
-            mock_log_error.assert_called_once_with("Invalid task index!")
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Invalid task index [TaskIndex: %d]"
+                and call.args[1] == -1
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'delete_task'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'delete_task'
+                for call in calls
+            ))
 
     def test_delete_task_database_error(self):
         """Verify database error handling during task deletion."""
@@ -586,13 +808,38 @@ class TestTodoListDeleteTask(BaseTodoListTest):
         # Configure mock for database error
         self.mock_db.delete_task.side_effect = DatabaseError("Database error", code=1)
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.delete_task(0)
                 
+            self.assertIn("Database operation failed", str(context.exception))
             self.assertIn("Database error", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to delete task - Error: %s" 
+                and call.args[1] == "Database error"
+                and call.kwargs.get('exc_info') == True
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'delete_task'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'delete_task'
+                for call in calls
+            ))
+            
+            # Verify mock calls
             self.mock_db.get_task.assert_called_once_with(1)
+            self.mock_db.delete_task.assert_called_once_with(1)
 
     def test_delete_task_timeout_error(self):
         """Verify timeout error handling during task deletion."""
@@ -606,10 +853,77 @@ class TestTodoListDeleteTask(BaseTodoListTest):
         # Configure mock for timeout
         self.mock_db.delete_task.side_effect = TimeoutError("Connection timeout")
 
-        with patch('logging.error') as mock_log_error:
+        with patch('python.todo.log.error') as mock_log_error:
             with self.assertRaises(RuntimeError) as context:
                 self.todo_list.delete_task(0)
                 
             self.assertIn("Connection timeout", str(context.exception))
-            mock_log_error.assert_called_once()
+            
+            # Verify that error was logged multiple times due to decorators
+            calls = mock_log_error.call_args_list
+            self.assertEqual(len(calls), 4)  # Expect 4 error log calls
+            
+            # Verify the specific error messages
+            self.assertTrue(any(
+                call.args[0] == "Failed to delete task - Error: %s" 
+                and call.args[1] == "Connection timeout"
+                and call.kwargs.get('exc_info') == True
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == 'Failed %s [OperationID: %s] - Error: %s'
+                and call.args[1] == 'delete_task'
+                for call in calls
+            ))
+            self.assertTrue(any(
+                call.args[0] == "Function '%s' failed after %.2f seconds - Error: %s"
+                and call.args[1] == 'delete_task'
+                for call in calls
+            ))
+            
+            # Verify mock calls
             self.mock_db.get_task.assert_called_once_with(1)
+            self.mock_db.delete_task.assert_called_once_with(1)
+
+class TestTodoListLogging(BaseTodoListTest):
+    """Test suite for TodoList logging functionality."""
+
+    def setUp(self):
+        """Set up test environment with proper mocks."""
+        super().setUp()
+        self.logger = setup_logging("test_todo")
+        # Setup mock database to return a list for get_all_tasks
+        self.mock_db.get_all_tasks.return_value = [(1, "Test Task", None, None, None, None)]
+        # Initialize tasks list as a real list
+        self.todo_list.tasks = []
+        # Setup mock for add_task to return a task ID
+        self.mock_db.add_task.return_value = 1
+
+    def test_operation_logging(self):
+        """Test operation logging in TodoList methods"""
+        with self.assertLogs('python.todo', level='INFO') as log:
+            self.todo_list.add_task("Test Task")
+            
+            log_output = log.output
+            self.assertTrue(any("[OperationID:" in msg for msg in log_output))
+            self.assertTrue(any("add_task" in msg for msg in log_output))
+
+    def test_error_logging(self):
+        """Test error logging with operation context"""
+        with self.assertLogs('python.todo', level='ERROR') as log:
+            try:
+                self.todo_list.add_task("")
+            except ValueError:
+                pass
+
+            log_output = log.output
+            self.assertTrue(any("Invalid task parameter" in msg for msg in log_output))
+            self.assertTrue(any("[OperationID:" in msg for msg in log_output))
+
+    def test_performance_logging(self):
+        """Test execution time logging"""
+        with self.assertLogs('python.todo', level='DEBUG') as log:
+            self.todo_list.refresh_tasks()
+            
+            log_output = log.output
+            self.assertTrue(any("executed in" in msg for msg in log_output))
