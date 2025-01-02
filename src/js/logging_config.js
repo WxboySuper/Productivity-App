@@ -12,6 +12,7 @@ log.transports.file.resolvePath = () => path.join('logs', 'productivity.log');
 // Add request ID tracking
 const generateRequestId = () => {
     const { v4: uuidv4 } = require('uuid');
+    return uuidv4();
 };
 
 // Structured logging helper
