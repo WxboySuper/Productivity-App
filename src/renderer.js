@@ -7,7 +7,7 @@ const scriptPath = process.env.NODE_ENV === 'production'
     : path.join(__dirname, 'python')
 
 // Function to communicate with Python
-async function runPythonCommand(command, data) {
+function runPythonCommand(command, data) {
     const requestId = logOperation('debug', 'pythonCommand', { command, data })
     
     return new Promise((resolve, reject) => {
@@ -20,16 +20,16 @@ async function runPythonCommand(command, data) {
 
         PythonShell.run('todo_bridge.py', options, (err, results) => {
             if (err) {
-                logOperation('error', 'pythonCommandFailed', { command, error: err.message }, err)
+                logOperation('error', 'pythonCommandFailed', { requestId, command, error: err.message }, err)
                 reject(new Error(`Failed to execute Python command '${command}': ${err.message}`))
                 return
             }
             if (!results || results.length === 0) {
-                logOperation('error', 'pythonCommandNoResults', { command })
+                logOperation('error', 'pythonCommandNoResults', { requestId, command })
                 reject(new Error(`No results returned from Python command '${command}'`))
                 return
             }
-            logOperation('info', 'pythonCommandSuccess', { command, results })
+            logOperation('info', 'pythonCommandSuccess', { requestId, command, results })
             resolve(results[0])
         })
     })
@@ -193,6 +193,7 @@ async function createTask(taskData) {
 // skipcq: JS-0045, JS-0128
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
     const requestId = logOperation('debug', 'fetchWithRetry', { url, maxRetries })
+    const timeout = 5000; // 5 seconds timeout
     
     for (let i = 0; i < maxRetries; i++) {
         try {
