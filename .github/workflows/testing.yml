@@ -52,6 +52,7 @@ jobs:
 
         - name: Create Coverage Report
           run: |
+            cd ..
             coverage report -m
             coverage xml
 
@@ -59,5 +60,5 @@ jobs:
           uses: deepsourcelabs/test-coverage-action@master
           with: 
             key: python
-            coverage-file: ../coverage.xml
+            coverage-file: coverage.xml
             dsn: ${{ secrets.DEEPSOURCE_DSN }}
