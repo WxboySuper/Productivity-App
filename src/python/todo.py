@@ -182,7 +182,6 @@ class TodoList:
 
             task_id = self.tasks[task_index][0]
             try:
-                task = self.db.get_task(task_id)  # Get task before deletion
                 self.db.delete_task(task_id)
                 self.refresh_tasks()
                 log.info("Successfully deleted task [TaskID: %s]", task_id)
