@@ -54,6 +54,7 @@ jobs:
           run: |
             coverage report -m
             coverage xml
+            ls
 
         - name: DeepSource Test Coverage
           uses: deepsourcelabs/test-coverage-action@master
