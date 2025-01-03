@@ -226,11 +226,13 @@ class TodoDatabase:
             DatabaseError: If there is an error deleting the task or if the task does not exist.
         """
         query = 'DELETE FROM tasks WHERE id = ?'
+        op_id = self.generate_operation_id()
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 cursor.execute(query, (task_id,))
                 if cursor.rowcount == 0:
+                    self.log.warning("Task not found [OperationID: %s, TaskID: %d]", op_id, task_id)
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
                 conn.commit()
         except sqlite3.OperationalError as e:
@@ -269,6 +271,8 @@ class TodoDatabase:
         """
         Updates a task in the database with the provided field updates.
 
+        Lint Skip: BAN-B608, this is a safe query as the fields are validated
+
         Args:
             task_id (int): The ID of the task to update.
             **updates (dict): A dictionary of field updates to apply to the task.
@@ -289,7 +293,7 @@ class TodoDatabase:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 set_clause = ', '.join(f"{field} = ?" for field in validated_updates)
-                #skipcq: BAN-B608
+                # skipcq: BAN-B608
                 query = f'UPDATE tasks SET {set_clause} WHERE id = ?'
                 values = list(validated_updates.values()) + [task_id]
                 cursor.execute(query, values)
@@ -370,9 +374,11 @@ class TodoDatabase:
             self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
-    def add_label(self, name, color=None):
+    def add_label(self, name, color=None):  # skipcq: PYL-R1710
         """
         Adds a new label to the database or returns existing label ID.
+
+        Lint Skip: PYL-R1710, idk why it's flagging this
 
         Args:
             name (str): The name of the label

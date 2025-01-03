@@ -23,6 +23,7 @@ def generate_request_id():
     """
     return str(uuid.uuid4())
 
+
 def handle_command(cmd, payload):
     """
     Process incoming commands and their payloads.
@@ -41,8 +42,8 @@ def handle_command(cmd, payload):
     """
     cmd_request_id = generate_request_id()
     log.info("Processing command: %s [RequestID: %s]", cmd, cmd_request_id)
-    safe_payload = {k: v for k, v in payload.items() if k not in ['notes', 'personal_info']}  # Add other sensitive fields  
-    log.debug("Command payload: %s [RequestID: %s]", json.dumps(safe_payload), cmd_request_id) 
+    safe_payload = {k: v for k, v in payload.items() if k not in ['notes', 'personal_info']}  # Add other sensitive fields
+    log.debug("Command payload: %s [RequestID: %s]", json.dumps(safe_payload), cmd_request_id)
 
     try:
         if cmd == "get_tasks":
@@ -71,6 +72,7 @@ def handle_command(cmd, payload):
         log.error("Error processing command %s [RequestID: %s] - Error: %s",
                   cmd, cmd_request_id, str(e), exc_info=True)
         raise
+
 
 if __name__ == "__main__":
     try:

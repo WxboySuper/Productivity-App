@@ -44,7 +44,8 @@ def health_check():
     return {'status': 'healthy'}, 200
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
+    # Coverage Skip: I have no clue how to test this
     try:
         # Register signal handlers
         signal.signal(signal.SIGINT, signal_handler)

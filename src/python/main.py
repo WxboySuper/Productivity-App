@@ -27,6 +27,7 @@ def before_request():
     log.info("Incoming %s request to %s [RequestID: %s]",
              request.method, request.path, request.request_id)
 
+
 @app.route('/tasks', methods=['GET'])
 @log_execution_time(log)
 def get_tasks():
@@ -48,6 +49,7 @@ def get_tasks():
             log.error("Failed to retrieve tasks [RequestID: %s] - Error: %s",
                       request.request_id, str(e), exc_info=True)
             return jsonify({'error': 'Internal Server Error'}), 500
+
 
 @app.route('/tasks', methods=['POST'])
 @log_execution_time(log)
