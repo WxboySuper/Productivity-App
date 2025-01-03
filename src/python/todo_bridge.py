@@ -73,6 +73,7 @@ def handle_command(cmd, payload):
                   cmd, cmd_request_id, str(e), exc_info=True)
         raise
 
+
 if __name__ == "__main__":
     try:
         request_id = generate_request_id()
