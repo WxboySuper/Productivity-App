@@ -18,6 +18,7 @@ app.config.update(
     DEBUG=True
 )
 
+
 class AppContext:
     """Context manager for Flask app cleanup"""
     def __init__(self, flask_app):
@@ -45,6 +46,7 @@ class AppContext:
 
 # Create app context
 app_context = AppContext(app)
+
 
 def signal_handler(_signum, _frame):
     """Handle shutdown signals gracefully"""
