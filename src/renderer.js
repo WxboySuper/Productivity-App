@@ -51,6 +51,14 @@ document.addEventListener('DOMContentLoaded', loadTasks)
 module.exports = { loadTasks}
 
 window.addEventListener('load', displayTasks);
+
+/**
+ * Displays tasks in the task table by fetching from the server
+ * @async
+ * @function displayTasks
+ * @description Fetches tasks from the server and renders them in the HTML table
+ * including title, deadline, category, priority, and completion status
+ */
 function displayTasks() {
     fetch('http://localhost:5000/tasks')
         .then(response => response.json())
@@ -71,7 +79,16 @@ function displayTasks() {
             });
         });
 }
-    function showIndicator(type, message) {
+
+/**
+ * Shows a temporary status indicator to the user
+ * @function showIndicator
+ * @param {'success' | 'error'} type - The type of indicator to show
+ * @param {string} message - The message to display to the user
+ * @description Displays a success or error message that automatically hides after 3 seconds.
+ * Uses dedicated DOM elements for success and error states.
+ */
+function showIndicator(type, message) {
     const successIndicator = document.getElementById('success-indicator');
     const errorIndicator = document.getElementById('error-indicator');
 
@@ -97,6 +114,15 @@ function displayTasks() {
     }, 3000);
 }
 
+/**
+ * Refreshes the task list display with latest data from server
+ * @async
+ * @function refreshTaskList
+ * @description Fetches updated task data from the server using retry mechanism,
+ * logs the operation, and updates the task table in the DOM.
+ * Handles errors and provides logging for debugging.
+ * @returns {Promise<void>}
+ */
 async function refreshTaskList() {
     const requestId = logOperation('debug', 'refreshTaskList')
     

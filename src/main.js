@@ -9,6 +9,11 @@ let serverProcess = null
 let bridgeProcess = null
 let pyshell = null
 
+/**
+ * Starts the Python backend processes (server, bridge, and pyshell)
+ * Initializes the database path and handles process output/errors
+ * @throws {Error} If server or bridge processes fail to start
+ */
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
     const dbPath = path.join(userDataPath, 'todo.db')
@@ -77,6 +82,10 @@ function startBackendProcesses() {
     });
 }
 
+/**
+ * Terminates all running Python processes
+ * Cleans up server, bridge, and pyshell processes
+ */
 function terminateProcesses() {
     if (serverProcess) {
         serverProcess.kill()
@@ -94,6 +103,10 @@ function terminateProcesses() {
     }
 }
 
+/**
+ * Creates and configures the main application window
+ * Initializes backend processes and loads the main HTML file
+ */
 function createWindow() {
     startBackendProcesses()
     const mainWindow = new BrowserWindow({
