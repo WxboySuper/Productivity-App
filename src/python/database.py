@@ -370,7 +370,7 @@ class TodoDatabase:
             self.log.error("Database connection error: %s", e)
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
-    def add_label(self, name, color=None):
+    def add_label(self, name, color=None):  # skipcq: PYL-R1710
         """
         Adds a new label to the database or returns existing label ID.
 

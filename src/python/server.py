@@ -44,7 +44,7 @@ def health_check():
     return {'status': 'healthy'}, 200
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     try:
         # Register signal handlers
         signal.signal(signal.SIGINT, signal_handler)
