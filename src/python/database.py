@@ -226,11 +226,13 @@ class TodoDatabase:
             DatabaseError: If there is an error deleting the task or if the task does not exist.
         """
         query = 'DELETE FROM tasks WHERE id = ?'
+        op_id = self.generate_operation_id()
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 cursor.execute(query, (task_id,))
                 if cursor.rowcount == 0:
+                    self.log.warning("Task not found [OperationID: %s, TaskID: %d]", op_id, task_id)
                     raise DatabaseError(f"No task found with ID {task_id}", "TASK_NOT_FOUND")
                 conn.commit()
         except sqlite3.OperationalError as e:
