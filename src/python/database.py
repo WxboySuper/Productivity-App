@@ -289,7 +289,7 @@ class TodoDatabase:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 set_clause = ', '.join(f"{field} = ?" for field in validated_updates)
-                #skipcq: BAN-B608
+                # skipcq: BAN-B608
                 query = f'UPDATE tasks SET {set_clause} WHERE id = ?'
                 values = list(validated_updates.values()) + [task_id]
                 cursor.execute(query, values)
