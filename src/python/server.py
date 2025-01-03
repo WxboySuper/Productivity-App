@@ -45,6 +45,7 @@ class AppContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanup()
 
+
 # Create app context
 app_context = AppContext(app)
 
