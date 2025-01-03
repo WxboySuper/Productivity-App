@@ -28,6 +28,7 @@ class DatabaseError(Exception):
             if e.code == "EMPTY_TITLE":
                 print("Task title cannot be empty")
     """
+
     def __init__(self, message, code):
         super().__init__(message)
         self.code = code
