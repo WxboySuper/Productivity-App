@@ -21,6 +21,7 @@ app.config.update(
 
 class AppContext:
     """Context manager for Flask app cleanup"""
+
     def __init__(self, flask_app):
         self.app = flask_app
         self.cleanup_handlers = []
