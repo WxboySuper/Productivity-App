@@ -475,6 +475,20 @@ class TodoDatabase:
             raise DatabaseError("An error occurred while connecting to the database", "DB_CONN_ERROR") from e
 
     def clear_task_labels(self, task_id):
+        """
+        Removes all label associations for a specified task from the task_labels table.
+        Args:
+            task_id: The unique identifier of the task whose labels should be removed.
+        Raises:
+            DatabaseError: If no task is found with the given ID or if there's a database connection error.
+                Error codes:
+                - "TASK_NOT_FOUND": When no task exists with the provided task_id
+                - "DB_CONN_ERROR": When there's an error connecting to the database
+        Example:
+                db.clear_task_labels(task_id=1)
+            except DatabaseError as e:
+                print(f"Error: {e.message}, Code: {e.code}")
+        """
         query = "DELETE FROM task_labels WHERE task_id = ?"
 
         try:
