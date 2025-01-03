@@ -271,6 +271,8 @@ class TodoDatabase:
         """
         Updates a task in the database with the provided field updates.
 
+        Lint Skip: BAN-B608, this is a safe query as the fields are validated
+
         Args:
             task_id (int): The ID of the task to update.
             **updates (dict): A dictionary of field updates to apply to the task.
@@ -375,6 +377,8 @@ class TodoDatabase:
     def add_label(self, name, color=None):  # skipcq: PYL-R1710
         """
         Adds a new label to the database or returns existing label ID.
+
+        Lint Skip: PYL-R1710, idk why it's flagging this
 
         Args:
             name (str): The name of the label
