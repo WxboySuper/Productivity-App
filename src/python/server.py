@@ -18,6 +18,32 @@ app.config.update(
     DEBUG=True
 )
 
+class AppContext:
+    """Context manager for Flask app cleanup"""
+    def __init__(self, flask_app):
+        self.app = flask_app
+        self.cleanup_handlers = []
+
+    def register_cleanup(self, handler):
+        """Register a cleanup handler"""
+        self.cleanup_handlers.append(handler)
+
+    def cleanup(self):
+        """Execute all cleanup handlers"""
+        for handler in self.cleanup_handlers:
+            try:
+                handler()
+            except Exception as e:
+                log.error("Cleanup handler failed: %s", str(e))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cleanup()
+
+# Create app context
+app_context = AppContext(app)
 
 class AppContext:
     """Context manager for Flask app cleanup"""
