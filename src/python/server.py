@@ -26,7 +26,8 @@ class AppContext:
 
     def register_cleanup(self, handler):
         """Register a cleanup handler"""
-        self.cleanup_handlers.append(handler)
+        if callable(handler):
+            self.cleanup_handlers.append(handler)
 
     def cleanup(self):
         """Execute all cleanup handlers"""
