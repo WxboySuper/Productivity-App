@@ -23,6 +23,7 @@ def generate_request_id():
     """
     return str(uuid.uuid4())
 
+
 def handle_command(cmd, payload):
     """
     Process incoming commands and their payloads.
