@@ -1,8 +1,8 @@
 from python.server import app, AppContext, signal_handler
 import unittest
+import unittest.mock
 import signal
 import time
-import unittest.mock
 import sqlite3
 
 class TestServer(unittest.TestCase):

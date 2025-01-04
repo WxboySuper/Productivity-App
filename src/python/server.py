@@ -103,7 +103,7 @@ def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(check_connection)
             future.result(timeout=timeout)  # This will raise TimeoutError if it takes too long
-        
+
         response_time = time.time() - start_time
         db_health.update({
             "status": "connected",
@@ -116,7 +116,7 @@ def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
         db_health["error"] = f"Database error: {str(e)}"
     except Exception as e:
         db_health["error"] = f"Unexpected error: {str(e)}"
-    
+
     return db_health
 
 
@@ -124,17 +124,17 @@ def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
 def health_check():
     """Comprehensive health check endpoint"""
     log.debug("Health check requested")
-    
+
     # Calculate uptime
     uptime = time.time() - app.config['START_TIME']
-    
+
     # Get system metrics
     memory = psutil.virtual_memory()
     load = psutil.getloadavg()
-    
+
     # Perform database health check
     db_health = check_database_health()
-    
+
     health_data = {
         'status': 'healthy',
         'uptime_seconds': round(uptime, 2),
@@ -150,17 +150,17 @@ def health_check():
         },
         'database': db_health
     }
-    
+
     # Set response status based on metrics
     is_healthy = (
         memory.percent < 90 and          # Less than 90% memory usage
         load[0] < 5 and                  # Load average below 5
         db_health['status'] == "connected"
     )
-    
+
     health_data['status'] = 'healthy' if is_healthy else 'degraded'
     status_code = 200 if is_healthy else 503
-    
+
     return health_data, status_code
 
 
