@@ -74,7 +74,7 @@ def handle_command(cmd, payload):
         raise
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     try:
         request_id = generate_request_id()
         log.info("Bridge script started [RequestID: %s]", request_id)
