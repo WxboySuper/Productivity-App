@@ -91,12 +91,16 @@ def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
             sqlite3.Error: For other SQLite-related errors
             Exception: For unexpected errors during connection attempt
         """
-        conn = sqlite3.connect('productivity.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT 1')
-        cursor.fetchone()
-        cursor.close()
-        conn.close()
+        conn = None
+        try:
+            conn = sqlite3.connect('productivity.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+            cursor.close()
+        finally:
+            if conn:
+                conn.close()
 
     try:
         start_time = time.time()
