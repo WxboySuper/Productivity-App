@@ -134,9 +134,30 @@ async function createWindow() {
                 contextIsolation: true,   // Keep context isolation enabled
                 sandbox: true,           // Enable sandboxing
                 preload: path.join(__dirname, 'preload.js'),
-                webSecurity: true  // Enable web security
+                webSecurity: true,  // Enable web security
+                allowRunningInsecureContent: false,
+                enableRemoteModule: false
             }
         });
+
+        // Production CSP headers
+        mainWindow.webContents.session.webRequest.onHeadersReceived(
+            (details, callback) => {
+                callback({
+                    responseHeaders: {
+                        ...details.responseHeaders,
+                        'Content-Security-Policy': ["default-src 'self'"]
+                    }
+                });
+            }
+        );
+
+        // Disable devtools in production
+        if (process.env.NODE_ENV !== 'development') {
+            mainWindow.webContents.on('devtools-opened', () => {
+                mainWindow.webContents.closeDevTools();
+            });
+        }
 
         const indexPath = path.join(__dirname, 'index.html');
         logToFile('info', { path: indexPath });
@@ -190,5 +211,15 @@ process.on('uncaughtException', (error) => {
         timestamp: new Date().toISOString(),
         error: error.toString(),
         stack: error.stack
+    });
+});
+
+// Enhanced error handling
+process.on('unhandledRejection', (reason) => {
+    logToFile('error', {
+        requestId: generateRequestId(),
+        operation: 'unhandledRejection',
+        error: reason?.toString(),
+        stack: reason?.stack
     });
 });

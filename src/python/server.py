@@ -19,11 +19,15 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 todo_list = TodoList()
 app.config.update(
-    PORT=5000,
-    ENV='development',  # Only include ENV once
-    DEBUG=os.environ.get("FLASK_DEBUG", False),
-    START_TIME=time.time(),  # Add startup time to track uptime
-    DB_TIMEOUT=os.environ.get("DB_TIMEOUT", 1.0)  # Add configurable timeout
+    PORT=int(os.environ.get('PORT', 5000)),
+    ENV='production',
+    DEBUG=False,
+    START_TIME=time.time(),
+    DB_TIMEOUT=float(os.environ.get("DB_TIMEOUT", 1.0)),
+    PROPAGATE_EXCEPTIONS=False,
+    JSONIFY_PRETTYPRINT_REGULAR=False,
+    JSON_SORT_KEYS=False,
+    PREFERRED_URL_SCHEME='https'
 )
 
 
@@ -283,3 +287,14 @@ def before_first_request():
         "database_path": os.path.abspath(todo_list.db.db_file),
         "log_path": os.path.abspath(LOG_FILE)
     })
+
+# Add production security headers
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = "default-src 'self'"
+    return response

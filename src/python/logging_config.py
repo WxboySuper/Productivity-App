@@ -29,9 +29,9 @@ def setup_logging(logger_name, log_file=None):
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
     
-    # Create consistent format matching electron logs
+    # Production-ready formatter with process ID
     formatter = logging.Formatter(
-        '[%(asctime)s] [%(levelname)s] %(name)s - %(message)s',
+        '[%(asctime)s] [%(levelname)s] [%(process)d] %(name)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
@@ -50,8 +50,18 @@ def setup_logging(logger_name, log_file=None):
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
-    # Set level based on environment
-    logger.setLevel(logging.DEBUG if os.getenv('FLASK_ENV') == 'development' else logging.INFO)
+    # Set production defaults
+    logger.setLevel(logging.INFO if os.getenv('FLASK_ENV') != 'development' else logging.DEBUG)
+    
+    # Add error logging to separate file
+    error_handler = RotatingFileHandler(
+        os.path.join("logs", "error.log"),
+        maxBytes=5*1024*1024,  # 5MB
+        backupCount=10
+    )
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(formatter)
+    logger.addHandler(error_handler)
     
     # Capture SQLite logs
     logging.getLogger('sqlite3').setLevel(logging.INFO)
