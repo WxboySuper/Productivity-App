@@ -134,6 +134,7 @@ def test_error():
     """Route for testing unhandled exceptions."""
     raise Exception("Test error")
 
+
 @app.errorhandler(Exception)
 def handle_error(error):
     """
