@@ -138,7 +138,7 @@ def check_database_health(timeout: float = None) -> Dict[str, Any]:
 @app.route('/health')
 def health_check():
     """Comprehensive health check endpoint
-    
+
     Returns:
         tuple: A tuple containing:
             - dict: Health check data with the following structure:
