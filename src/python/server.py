@@ -25,6 +25,7 @@ app.config.update(
     DB_TIMEOUT=os.environ.get("DB_TIMEOUT", 1.0)  # Add configurable timeout
 )
 
+
 class AppContext:
     """Context manager for Flask app cleanup"""
 
