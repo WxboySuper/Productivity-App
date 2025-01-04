@@ -3,6 +3,7 @@ import unittest
 import signal
 import time
 import unittest.mock
+import sqlite3
 
 class TestServer(unittest.TestCase):
     """Test suite for server configuration."""
@@ -60,6 +61,63 @@ class TestServer(unittest.TestCase):
         self.assertIsInstance(data['memory']['available'], (int, float))
         self.assertIsInstance(data['memory']['percent'], (int, float))
         self.assertIsInstance(data['system_load']['1min'], (int, float))
+
+    @unittest.mock.patch('sqlite3.connect')
+    def test_database_health_success(self, mock_connect):
+        """Test successful database health check"""
+        mock_cursor = unittest.mock.MagicMock()
+        mock_cursor.fetchone.return_value = (1,)
+        mock_connect.return_value.cursor.return_value = mock_cursor
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        
+        self.assertEqual(data['database']['status'], 'connected')
+        self.assertIsNone(data['database']['error'])
+        self.assertIsInstance(data['database']['response_time'], float)
+        self.assertEqual(response.status_code, 200)
+
+    @unittest.mock.patch('sqlite3.connect')
+    def test_database_health_timeout(self, mock_connect):
+        """Test database health check timeout"""
+        def slow_connection(*args, **kwargs):
+            time.sleep(2)  # Simulate slow connection
+            return unittest.mock.MagicMock()
+            
+        mock_connect.side_effect = slow_connection
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        
+        self.assertEqual(data['database']['status'], 'disconnected')
+        self.assertEqual(data['database']['error'], 'Connection timed out')
+        self.assertEqual(response.status_code, 503)
+
+    @unittest.mock.patch('sqlite3.connect')
+    def test_database_health_error(self, mock_connect):
+        """Test database connection error handling"""
+        mock_connect.side_effect = sqlite3.OperationalError('test error')
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        
+        self.assertEqual(data['database']['status'], 'disconnected')
+        self.assertEqual(data['database']['error'], 'Database error: test error')
+        self.assertEqual(response.status_code, 503)
+
+    @unittest.mock.patch('sqlite3.connect')
+    def test_database_response_time(self, mock_connect):
+        """Test database response time measurement"""
+        mock_cursor = unittest.mock.MagicMock()
+        mock_cursor.fetchone.return_value = (1,)
+        mock_connect.return_value.cursor.return_value = mock_cursor
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        
+        self.assertIsNotNone(data['database']['response_time'])
+        self.assertGreater(data['database']['response_time'], 0)
+        self.assertLess(data['database']['response_time'], 1000)  # Should be less than 1 second
 
     @unittest.mock.patch('psutil.virtual_memory')
     @unittest.mock.patch('psutil.getloadavg')
