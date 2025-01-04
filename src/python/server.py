@@ -81,6 +81,16 @@ def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
     }
 
     def check_connection():
+        """Attempt to establish and verify database connection.
+        
+        Establishes connection to SQLite database, executes a simple query
+        to verify connection is working, and properly closes resources.
+        
+        Raises:
+            sqlite3.OperationalError: If database connection fails
+            sqlite3.Error: For other SQLite-related errors
+            Exception: For unexpected errors during connection attempt
+        """
         conn = sqlite3.connect('productivity.db')
         cursor = conn.cursor()
         cursor.execute('SELECT 1')
@@ -108,6 +118,7 @@ def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
         db_health["error"] = f"Unexpected error: {str(e)}"
     
     return db_health
+
 
 @app.route('/health')
 def health_check():
