@@ -621,6 +621,58 @@ class TestTodoListMarkCompleted(BaseTodoListTest):
         # Verify mark_completed was not called since task was already completed
         self.mock_db.mark_completed.assert_not_called()
 
+    def test_mark_completed_get_task_error(self):
+        """Test mark_completed when get_task fails"""
+        # Setup test data
+        test_tasks = [(1, "Task 1", None, None, None, None)]
+        self.todo_list.tasks = test_tasks
+        
+        # Mock get_task to fail with an error
+        self.mock_db.get_task.side_effect = DatabaseError("Database error", code=1)
+        
+        with patch('python.todo.log.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.mark_completed(0)
+                
+            self.assertIn("Database operation failed", str(context.exception))
+            self.assertIn("Database error", str(context.exception))
+            
+            # Verify the error log message
+            self.assertTrue(any(
+                call.args[0] == "Failed to get task details - Error: %s"
+                and call.args[1] == "Database error"
+                for call in mock_log_error.call_args_list
+            ))
+            
+            # Verify mark_completed was not called
+            self.mock_db.mark_completed.assert_not_called()
+
+    def test_mark_completed_get_task_timeout(self):
+        """Test mark_completed when get_task times out"""
+        # Setup test data
+        test_tasks = [(1, "Task 1", None, None, None, None)]
+        self.todo_list.tasks = test_tasks
+        
+        # Mock get_task to fail with timeout
+        self.mock_db.get_task.side_effect = TimeoutError("Connection timeout")
+        
+        with patch('python.todo.log.error') as mock_log_error:
+            with self.assertRaises(RuntimeError) as context:
+                self.todo_list.mark_completed(0)
+                
+            self.assertIn("Database operation failed", str(context.exception))
+            self.assertIn("Connection timeout", str(context.exception))
+            
+            # Verify the error log message
+            self.assertTrue(any(
+                call.args[0] == "Failed to get task details - Error: %s"
+                and call.args[1] == "Connection timeout"
+                for call in mock_log_error.call_args_list
+            ))
+            
+            # Verify mark_completed was not called
+            self.mock_db.mark_completed.assert_not_called()
+
 class TestTodoListUpdateTask(BaseTodoListTest):
     """Test suite for update_task method of TodoList class."""
     

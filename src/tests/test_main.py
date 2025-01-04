@@ -165,3 +165,31 @@ class TestFlaskAPI(unittest.TestCase):
             json.loads(response.data),
             {'error': 'No data provided'}
         )
+
+    def test_unhandled_exception_with_request_id(self):
+        """Test global error handler when request_id is available"""
+        with patch('python.main.todo') as mock_todo:
+            # Force an exception by making todo.tasks raise AttributeError
+            mock_todo.tasks = property(lambda x: (_ for _ in ()).throw(AttributeError("Test error")))
+            
+            # Set a known request_id
+            with self.app as client:
+                client.get('/tasks')
+                
+                # The error handler should return 500
+                response = json.loads(client.get('/tasks').data)
+                self.assertEqual(
+                    response,
+                    {'error': 'Internal Server Error'}
+                )
+
+    def test_unhandled_exception_without_request_id(self):
+        """Test global error handler when request_id is not available"""
+        # Make request to the pre-defined error route
+        response = self.app.get('/test_error')
+        
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            json.loads(response.data),
+            {'error': 'Internal Server Error'}
+        )

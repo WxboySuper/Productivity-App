@@ -1,4 +1,4 @@
-from python.server import app, signal_handler, AppContext, signal
+from python.server import app, signal_handler, AppContext, signal, check_database_health
 import unittest
 import time
 import sqlite3
@@ -136,6 +136,43 @@ class TestServer(unittest.TestCase):
         self.assertIsNotNone(data['database']['response_time'])
         self.assertGreater(data['database']['response_time'], 0)
         self.assertLess(data['database']['response_time'], 1000)  # Should be less than 1 second
+
+    def test_database_health_unexpected_error(self):
+        """Test handling of unexpected errors during database health check"""
+        # Create a mock connection that raises an unexpected error
+        with unittest.mock.patch('sqlite3.connect') as mock_connect:
+            mock_connect.side_effect = RuntimeError("Unexpected database error")
+            
+            response = self.client.get('/health')
+            data = response.get_json()
+            
+            self.assertEqual(data['database']['status'], 'disconnected')
+            self.assertEqual(
+                data['database']['error'],
+                'Unexpected error: Unexpected database error'
+            )
+            self.assertEqual(response.status_code, 503)
+
+    def test_database_health_connection_leak(self):
+        """Test database connection is properly closed after unexpected error"""
+        mock_connection = unittest.mock.MagicMock()
+        mock_cursor = unittest.mock.MagicMock()
+        
+        # Setup cursor to raise an unexpected error
+        mock_cursor.execute.side_effect = Exception("Unexpected error during query")
+        mock_connection.cursor.return_value = mock_cursor
+        
+        with unittest.mock.patch('sqlite3.connect', return_value=mock_connection):
+            response = self.client.get('/health')
+            data = response.get_json()
+            
+            # Verify connection was closed
+            mock_connection.close.assert_called_once()
+            self.assertEqual(data['database']['status'], 'disconnected')
+            self.assertEqual(
+                data['database']['error'],
+                'Unexpected error: Unexpected error during query'
+            )
 
     @unittest.mock.patch('psutil.virtual_memory')
     @unittest.mock.patch('psutil.getloadavg')
@@ -278,6 +315,18 @@ class TestServer(unittest.TestCase):
             
             # Verify app.run was not called
             mock_run.assert_not_called()
+
+    def test_database_health_invalid_timeout(self):
+        """Test database health check with invalid timeout values"""
+        # Test negative timeout
+        with self.assertRaises(ValueError) as ctx:
+            check_database_health(timeout=-1.0)
+        self.assertEqual(str(ctx.exception), "Timeout must be a positive number")
+
+        # Test zero timeout
+        with self.assertRaises(ValueError) as ctx:
+            check_database_health(timeout=0)
+        self.assertEqual(str(ctx.exception), "Timeout must be a positive number")
 
 class TestAppContext(unittest.TestCase):
     """Test suite for AppContext functionality."""

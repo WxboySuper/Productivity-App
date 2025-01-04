@@ -129,6 +129,12 @@ def create_task():
             return jsonify({'error': 'Internal Server Error'}), 500
 
 
+@app.route('/test_error')
+def test_error():
+    """Route for testing unhandled exceptions."""
+    raise Exception("Test error")
+
+
 @app.errorhandler(Exception)
 def handle_error(error):
     """
