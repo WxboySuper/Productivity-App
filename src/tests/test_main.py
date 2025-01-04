@@ -185,17 +185,11 @@ class TestFlaskAPI(unittest.TestCase):
 
     def test_unhandled_exception_without_request_id(self):
         """Test global error handler when request_id is not available"""
-        with patch('python.main.todo') as mock_todo:
-            # Create a route that will trigger the error handler directly
-            @app.route('/test_error')
-            def test_error():
-                raise Exception("Test error")
-            
-            # Make request without going through before_request middleware
-            response = self.app.get('/test_error')
-            
-            self.assertEqual(response.status_code, 500)
-            self.assertEqual(
-                json.loads(response.data),
-                {'error': 'Internal Server Error'}
-            )
+        # Make request to the pre-defined error route
+        response = self.app.get('/test_error')
+        
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            json.loads(response.data),
+            {'error': 'Internal Server Error'}
+        )
