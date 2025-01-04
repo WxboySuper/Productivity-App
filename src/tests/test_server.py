@@ -1,6 +1,8 @@
 from python.server import app, AppContext, signal_handler
 import unittest
 import signal
+import time
+import unittest.mock
 
 class TestServer(unittest.TestCase):
     """Test suite for server configuration."""
@@ -25,6 +27,69 @@ class TestServer(unittest.TestCase):
         """Verify server port is set to 5000."""
         self.assertIn('PORT', self.app.config)
         self.assertEqual(5000, self.app.config['PORT'])
+
+    def test_health_check_structure(self):
+        """Test health check response structure."""
+        response = self.client.get('/health')
+        data = response.get_json()
+
+        self.assertIn('status', data)
+        self.assertIn('uptime_seconds', data)
+        self.assertIn('memory', data)
+        self.assertIn('system_load', data)
+        self.assertIn('database', data)
+
+        # Test memory structure
+        self.assertIn('total', data['memory'])
+        self.assertIn('available', data['memory'])
+        self.assertIn('percent', data['memory'])
+
+        # Test load structure
+        self.assertIn('1min', data['system_load'])
+        self.assertIn('5min', data['system_load'])
+        self.assertIn('15min', data['system_load'])
+
+    def test_health_check_values(self):
+        """Test health check returns valid values."""
+        response = self.client.get('/health')
+        data = response.get_json()
+
+        # Test value types
+        self.assertIsInstance(data['uptime_seconds'], (int, float))
+        self.assertIsInstance(data['memory']['total'], (int, float))
+        self.assertIsInstance(data['memory']['available'], (int, float))
+        self.assertIsInstance(data['memory']['percent'], (int, float))
+        self.assertIsInstance(data['system_load']['1min'], (int, float))
+
+    @unittest.mock.patch('psutil.virtual_memory')
+    @unittest.mock.patch('psutil.getloadavg')
+    def test_health_check_degraded(self, mock_load, mock_memory):
+        """Test health check degraded status."""
+        # Mock high memory usage
+        mock_memory.return_value = unittest.mock.Mock(
+            total=16000000000,
+            available=1000000000,
+            percent=95.0
+        )
+        # Mock high system load
+        mock_load.return_value = (6.0, 5.0, 4.0)
+
+        response = self.client.get('/health')
+        data = response.get_json()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(data['status'], 'degraded')
+
+    def test_health_check_uptime(self):
+        """Test health check uptime calculation."""
+        # Ensure START_TIME is set
+        self.app.config['START_TIME'] = time.time() - 10  # 10 seconds ago
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+
+        self.assertGreaterEqual(data['uptime_seconds'], 10)
+        self.assertLess(data['uptime_seconds'], 11)  # Allow for small execution time
 
     @staticmethod
     def test_server_not_run():
