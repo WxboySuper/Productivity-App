@@ -165,16 +165,14 @@ def health_check():
         'database': db_health
     }
 
-    # Add to app config initialization
-    app.config.update(
-        HEALTH_CHECK_MEMORY_THRESHOLD=os.environ.get('HEALTH_CHECK_MEMORY_THRESHOLD', 90),
-        HEALTH_CHECK_LOAD_THRESHOLD=os.environ.get('HEALTH_CHECK_LOAD_THRESHOLD', 5),
-    )
+    # Get thresholds from config with defaults
+    memory_threshold = float(app.config.get('HEALTH_CHECK_MEMORY_THRESHOLD', 90))
+    load_threshold = float(app.config.get('HEALTH_CHECK_LOAD_THRESHOLD', 5))
 
     # Set response status based on metrics
     is_healthy = (
-        memory.percent < app.config['HEALTH_CHECK_MEMORY_THRESHOLD'] and
-        load[0] < app.config['HEALTH_CHECK_LOAD_THRESHOLD'] and
+        memory.percent < memory_threshold and  # Changed back to < for strict comparison
+        load[0] < load_threshold and  # Changed back to < for strict comparison
         db_health['status'] == "connected"
     )
 
