@@ -1,4 +1,4 @@
-from python.server import app, signal_handler, AppContext, signal
+from python.server import app, signal_handler, AppContext, signal, check_database_health
 import unittest
 import time
 import sqlite3
@@ -315,6 +315,18 @@ class TestServer(unittest.TestCase):
             
             # Verify app.run was not called
             mock_run.assert_not_called()
+
+    def test_database_health_invalid_timeout(self):
+        """Test database health check with invalid timeout values"""
+        # Test negative timeout
+        with self.assertRaises(ValueError) as ctx:
+            check_database_health(timeout=-1.0)
+        self.assertEqual(str(ctx.exception), "Timeout must be a positive number")
+
+        # Test zero timeout
+        with self.assertRaises(ValueError) as ctx:
+            check_database_health(timeout=0)
+        self.assertEqual(str(ctx.exception), "Timeout must be a positive number")
 
 class TestAppContext(unittest.TestCase):
     """Test suite for AppContext functionality."""
