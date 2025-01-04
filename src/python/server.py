@@ -100,7 +100,7 @@ def check_database_health(timeout: float = None) -> Dict[str, Any]:
         """
         conn = None
         try:
-            conn = sqlite3.connect('productivity.db')
+            conn = sqlite3.connect('productivity.db', timeout=min(timeout, 5.0))
             cursor = conn.cursor()
             cursor.execute('SELECT 1')
             cursor.fetchone()
@@ -136,7 +136,27 @@ def check_database_health(timeout: float = None) -> Dict[str, Any]:
 
 @app.route('/health')
 def health_check():
-    """Comprehensive health check endpoint"""
+    """Comprehensive health check endpoint
+    
+    Returns:
+        tuple: A tuple containing:
+            - dict: Health check data with the following structure:
+                - status (str): 'healthy' or 'degraded'
+                - uptime_seconds (float): Server uptime in seconds
+                - memory (dict): Memory statistics
+                    - total (int): Total memory in bytes
+                    - available (int): Available memory in bytes
+                    - percent (float): Memory usage percentage
+                - system_load (dict): System load averages
+                    - 1min (float): 1-minute load average
+                    - 5min (float): 5-minute load average
+                    - 15min (float): 15-minute load average
+                - database (dict): Database health information
+                    - status (str): 'connected' or 'disconnected'
+                    - response_time (float|None): Response time in milliseconds
+                    - error (str|None): Error message if any
+            - int: HTTP status code (200 for healthy, 503 for degraded)
+    """
     log.debug("Health check requested")
 
     # Calculate uptime
