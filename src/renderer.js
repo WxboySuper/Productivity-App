@@ -5,7 +5,7 @@
 // const { ipcRenderer } = require('electron');
 
 // Use exposed APIs instead
-const logger = window.electronLogger;
+const logger = window.electronAPI.logger;
 
 async function fetchTasks() {
     try {
@@ -99,8 +99,7 @@ function showIndicator(type, message) {
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', async () => {
-    // Use electronLogger.logOperation instead of logOperation directly
-    window.electronLogger.logOperation('info', 'appInitialized');
+    logger.logOperation('info', 'appInitialized');
     
     try {
         const tasks = await fetchTasks();

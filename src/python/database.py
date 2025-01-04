@@ -64,15 +64,32 @@ class TodoDatabase:
             try:
                 if not os.path.exists(db_dir):
                     os.makedirs(db_dir, exist_ok=True)
-                if not os.access(db_dir, os.W_OK):
-                    self.log.error("[OperationID: %s] No write permission for database directory: %s", op_id, db_dir)
-                    raise PermissionError(f"No write permission for database directory: {db_dir}")
+                    self.log.info("[OperationID: %s] Created database directory: %s", op_id, db_dir)
+
+                db_path = os.path.abspath(self.db_file)
+                self.log.info("[OperationID: %s] Initializing database at: %s", op_id, db_path)
 
                 with sqlite3.connect(self.db_file) as conn:
                     self.init_database(conn)
-                    self.log.info("[OperationID: %s] Database initialized successfully at %s", op_id, self.db_file)
+                    self.log.info("[OperationID: %s] Database schema initialized", op_id)
+                    
+                    # Log database details
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM tasks")
+                    task_count = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM labels")
+                    label_count = cursor.fetchone()[0]
+                    
+                    self.log.info({
+                        "message": "Database statistics",
+                        "db_path": db_path,
+                        "size_mb": os.path.getsize(db_path) / (1024 * 1024),
+                        "task_count": task_count,
+                        "label_count": label_count
+                    })
+
             except Exception as e:
-                self.log.error("Failed to initialize database: %s", str(e), exc_info=True)
+                self.log.error("Database initialization failed: %s", str(e), exc_info=True)
                 raise
 
         self._conn = None
@@ -596,3 +613,4 @@ class TodoDatabase:
         except sqlite3.Error as e:
             log.error("Failed to connect to database: %s", str(e))
             raise DatabaseError(f"Database connection failed: {str(e)}", "DB_CONN_ERROR")
+

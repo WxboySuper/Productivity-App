@@ -89,6 +89,36 @@ function startPythonServer() {
     });
 }
 
+// Add IPC handlers
+function setupIPCHandlers() {
+    // Task operations
+    ipcMain.handle('tasks:fetch', async () => {
+        try {
+            const response = await fetch('http://localhost:5000/tasks');
+            return response.json();
+        } catch (error) {
+            logToFile('error', { operation: 'tasks:fetch', error: error.toString() });
+            throw error;
+        }
+    });
+
+    ipcMain.handle('tasks:add', async (_event, taskData) => {
+        try {
+            const response = await fetch('http://localhost:5000/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(taskData)
+            });
+            return response.json();
+        } catch (error) {
+            logToFile('error', { operation: 'tasks:add', error: error.toString() });
+            throw error;
+        }
+    });
+
+    // ...similar handlers for update and delete...
+}
+
 async function createWindow() {
     try {
         logToFile('info', 'startingPythonServer');
@@ -100,11 +130,11 @@ async function createWindow() {
             width: 800,
             height: 600,
             webPreferences: {
-                nodeIntegration: true,
-                contextIsolation: true,
-                enableRemoteModule: true,
+                nodeIntegration: false,  // Disable Node integration
+                contextIsolation: true,   // Keep context isolation enabled
+                sandbox: true,           // Enable sandboxing
                 preload: path.join(__dirname, 'preload.js'),
-                sandbox: false
+                webSecurity: true  // Enable web security
             }
         });
 
@@ -130,8 +160,8 @@ async function createWindow() {
         app.quit();
     }
 }
-
 app.whenReady().then(() => {
+    setupIPCHandlers();
     createWindow().catch(error => {
         logToFile('error', { operation: 'appInitializationFailed', error: error.toString() });
         app.quit();

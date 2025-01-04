@@ -3,7 +3,7 @@ import logging
 import os
 import signal
 import sys
-from logging_config import setup_logging, clear_log_file
+from logging_config import setup_logging, clear_log_file, LOG_FILE
 import psutil
 import time
 import sqlite3
@@ -269,3 +269,17 @@ if __name__ == '__main__':  # pragma: no cover
             exc_info=True
         )
         sys.exit(1)
+
+# Add more detailed startup logging
+@app.before_first_request
+def before_first_request():
+    """Log detailed server initialization"""
+    log.info({
+        "message": "Server initialization details",
+        "python_version": sys.version,
+        "flask_version": Flask.__version__,
+        "environment": app.config['ENV'],
+        "debug_mode": app.config['DEBUG'],
+        "database_path": os.path.abspath(todo_list.db.db_file),
+        "log_path": os.path.abspath(LOG_FILE)
+    })

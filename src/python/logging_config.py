@@ -22,26 +22,14 @@ os.makedirs("logs", exist_ok=True)
 
 
 def setup_logging(logger_name, log_file=None):
-    """
-    Setup logging configuration.
-
-    Args:
-        logger_name (str): Name of the logger
-        log_file (str, optional): Custom log file path
-
-    Returns:
-        logging.Logger: Configured logger instance
-    """
-    # Clear log file on initialization
-    if logger_name == '__main__':
-        clear_log_file()
-
+    """Setup logging configuration."""
     logger = logging.getLogger(logger_name)
     
     # Remove existing handlers
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
     
+    # Create consistent format matching electron logs
     formatter = logging.Formatter(
         '[%(asctime)s] [%(levelname)s] %(name)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
@@ -50,10 +38,23 @@ def setup_logging(logger_name, log_file=None):
     if log_file is None:
         log_file = os.path.join("logs", "productivity.log")
         
-    handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    
+    # Add file handler with rotation
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5
+    )
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    # Set level based on environment
+    logger.setLevel(logging.DEBUG if os.getenv('FLASK_ENV') == 'development' else logging.INFO)
+    
+    # Capture SQLite logs
+    logging.getLogger('sqlite3').setLevel(logging.INFO)
     
     return logger
 
