@@ -21,7 +21,8 @@ app.config.update(
     PORT=5000,
     ENV='development',
     DEBUG=os.environ.get("FLASK_DEBUG", False),
-    START_TIME=time.time()  # Add startup time to track uptime
+    START_TIME=time.time(),  # Add startup time to track uptime
+    DB_TIMEOUT=os.environ.get("DB_TIMEOUT", 1.0)  # Add configurable timeout
 )
 
 class AppContext:
@@ -72,8 +73,11 @@ def before_request():
         app.config['handled_first_request'] = True
 
 
-def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
+def check_database_health(timeout: float = None) -> Dict[str, Any]:
     """Check database connection health with timeout"""
+    if timeout is None:
+        timeout = float(app.config.get('DB_TIMEOUT', 1.0))
+        
     db_health = {
         "status": "disconnected",
         "response_time": None,
