@@ -20,7 +20,7 @@ app = Flask(__name__)
 app.config.update(
     PORT=5000,
     ENV='development',
-    DEBUG=True,
+    DEBUG=os.environ.get("FLASK_DEBUG", False),
     START_TIME=time.time()  # Add startup time to track uptime
 )
 
@@ -116,10 +116,13 @@ def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
         })
     except concurrent.futures.TimeoutError:
         db_health["error"] = "Connection timed out"
+        log.error("Database connection timed out")
     except sqlite3.OperationalError as e:
         db_health["error"] = f"Database error: {str(e)}"
+        log.error("SQLite operational error: %s", e)
     except Exception as e:
         db_health["error"] = f"Unexpected error: {str(e)}"
+        log.error("Unexpected error during database health check")
 
     return db_health
 
