@@ -97,7 +97,7 @@ class TestServer(unittest.TestCase):
     def test_database_health_timeout(self, mock_connect):
         """Test database health check timeout"""
         def slow_connection(*args, **kwargs):
-            time.sleep(2)  # Simulate slow connection
+            time.sleep(0.5)  # Simulate slow connection
             return unittest.mock.MagicMock()
             
         mock_connect.side_effect = slow_connection
