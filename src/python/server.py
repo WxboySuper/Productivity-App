@@ -77,7 +77,10 @@ def check_database_health(timeout: float = None) -> Dict[str, Any]:
     """Check database connection health with timeout"""
     if timeout is None:
         timeout = float(app.config.get('DB_TIMEOUT', 1.0))
-        
+
+    if timeout <= 0:
+        raise ValueError("Timeout must be a positive number")
+
     db_health = {
         "status": "disconnected",
         "response_time": None,
@@ -162,10 +165,16 @@ def health_check():
         'database': db_health
     }
 
+    # Add to app config initialization
+    app.config.update(
+        HEALTH_CHECK_MEMORY_THRESHOLD=os.environ.get('HEALTH_CHECK_MEMORY_THRESHOLD', 90),
+        HEALTH_CHECK_LOAD_THRESHOLD=os.environ.get('HEALTH_CHECK_LOAD_THRESHOLD', 5),
+    )
+
     # Set response status based on metrics
     is_healthy = (
-        memory.percent < 90 and          # Less than 90% memory usage
-        load[0] < 5 and                  # Load average below 5
+        memory.percent < app.config['HEALTH_CHECK_MEMORY_THRESHOLD'] and
+        load[0] < app.config['HEALTH_CHECK_LOAD_THRESHOLD'] and
         db_health['status'] == "connected"
     )
 
