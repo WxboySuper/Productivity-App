@@ -100,6 +100,7 @@ def check_database_health(timeout: float = None) -> Dict[str, Any]:
         """
         conn = None
         try:
+            # Cap connection timeout at 5 seconds as a safety measure
             conn = sqlite3.connect('productivity.db', timeout=min(timeout, 5.0))
             cursor = conn.cursor()
             cursor.execute('SELECT 1')
@@ -188,6 +189,7 @@ def health_check():
     # Get thresholds from config with defaults
     memory_threshold = float(app.config.get('HEALTH_CHECK_MEMORY_THRESHOLD', 90))
     load_threshold = float(app.config.get('HEALTH_CHECK_LOAD_THRESHOLD', 5))
+    log.debug("Health check thresholds - Memory: %s%%, Load: %s", memory_threshold, load_threshold)
 
     # Set response status based on metrics
     is_healthy = (
