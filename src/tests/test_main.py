@@ -89,7 +89,7 @@ class TestFlaskAPI(unittest.TestCase):
                                    content_type='application/json')
             
             self.assertEqual(response.status_code, 400)
-            self.assertEqual(json.loads(response.data), {'error': 'Invalid JSON format'})
+            self.assertEqual(json.loads(response.data), {'error': 'No data provided'})
             
             # Verify mock was not called since request should fail before reaching todo.add_task
             mock_todo.add_task.assert_not_called()
