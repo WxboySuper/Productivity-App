@@ -3,6 +3,19 @@ import os
 import time
 from functools import wraps
 from contextlib import contextmanager
+from logging.handlers import RotatingFileHandler
+from typing import Optional
+
+LOG_FILE = os.path.join('logs', 'productivity.log')
+
+def clear_log_file():
+    """Clear the log file contents."""
+    try:
+        os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+        with open(LOG_FILE, 'w') as f:
+            f.write('')  # Clear file contents
+    except Exception as e:
+        print(f"Error clearing log file: {e}")
 
 # Create logs directory
 os.makedirs("logs", exist_ok=True)
@@ -19,33 +32,29 @@ def setup_logging(logger_name, log_file=None):
     Returns:
         logging.Logger: Configured logger instance
     """
+    # Clear log file on initialization
+    if logger_name == '__main__':
+        clear_log_file()
+
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
-
-    # Create formatter
+    
+    # Remove existing handlers
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
     formatter = logging.Formatter(
-        '[%(levelname)s] [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
-        datefmt='%Y-%m-%d %H:%M:%S.%f'
+        '[%(asctime)s] [%(levelname)s] %(name)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
     )
-
-    # Setup file handler
+    
     if log_file is None:
-        log_dir = "logs"
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, "productivity.log")
-    else:
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-
-    from logging.handlers import RotatingFileHandler
-    file_handler = RotatingFileHandler(log_file, maxBytes=10*1024, backupCount=5)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    # Setup console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
+        log_file = os.path.join("logs", "productivity.log")
+        
+    handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    
     return logger
 
 

@@ -1,25 +1,26 @@
-from flask import Flask
+from flask import Flask, jsonify, request
 import logging
 import os
 import signal
 import sys
-from python.logging_config import setup_logging
+from logging_config import setup_logging, clear_log_file
 import psutil
 import time
 import sqlite3
 from typing import Dict, Any
 import concurrent.futures
+from todo import TodoList
 
 os.makedirs("logs", exist_ok=True)
 
 setup_logging(__name__)
 
 log = logging.getLogger(__name__)
-
 app = Flask(__name__)
+todo_list = TodoList()
 app.config.update(
     PORT=5000,
-    ENV='development',
+    ENV='development',  # Only include ENV once
     DEBUG=os.environ.get("FLASK_DEBUG", False),
     START_TIME=time.time(),  # Add startup time to track uptime
     DB_TIMEOUT=os.environ.get("DB_TIMEOUT", 1.0)  # Add configurable timeout
@@ -205,14 +206,49 @@ def health_check():
     return health_data, status_code
 
 
+@app.route('/tasks', methods=['GET'])
+def get_tasks():
+    """Get all tasks."""
+    try:
+        tasks = todo_list.get_tasks() if hasattr(todo_list, 'get_tasks') else todo_list.tasks
+        return jsonify(tasks)
+    except Exception as e:
+        log.error("Failed to get tasks", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/tasks', methods=['POST'])
+def create_task():
+    """Create a new task"""
+    try:
+        data = request.get_json()
+        if not data or 'title' not in data:
+            return jsonify({'error': 'Title is required'}), 400
+
+        task = todo_list.add_task(
+            title=data['title'],
+            deadline=data.get('deadline'),
+            category=data.get('category'),
+            priority=data.get('priority')
+        )
+        
+        log.info("Task created successfully: %s", task['title'])
+        return jsonify(task), 201
+    except Exception as e:
+        log.error("Failed to create task - Error: %s", str(e), exc_info=True)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 if __name__ == '__main__':  # pragma: no cover
-    # Coverage Skip: I have no clue how to test this
+    # Clear and initialize logging
+    clear_log_file()
+    log = setup_logging(__name__)
+    
+    log.info("Starting Productivity App Server")
     try:
         # Register signal handlers
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        log.info("Starting Productivity App Server")
         log.info("Environment: %s", app.config['ENV'])
         log.info("Debug mode: %s", app.config['DEBUG'])
         log.info("Server port: %s", app.config['PORT'])

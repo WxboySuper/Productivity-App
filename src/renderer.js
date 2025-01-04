@@ -1,98 +1,82 @@
-const { PythonShell } = require('python-shell')
-const path = require('path')
-const { logOperation } = require('./js/logging_config')
+// Remove require statements
+// const { logOperation } = require('./js/logging_config');
+// const fs = require('fs');
+// const path = require('path');
+// const { ipcRenderer } = require('electron');
 
-const scriptPath = process.env.NODE_ENV === 'production' 
-    ? path.join(process.resourcesPath, 'src', 'python')
-    : path.join(__dirname, 'python')
+// Use exposed APIs instead
+const logger = window.electronLogger;
 
-// Function to communicate with Python
-function runPythonCommand(command, data) {
-    const requestId = logOperation('debug', 'pythonCommand', { command, data })
-    
-    return new Promise((resolve, reject) => {
-        const options = {
-            mode: 'json',
-            pythonPath: 'python',
-            scriptPath,
-            args: [command, JSON.stringify(data)]
-        }
-
-        PythonShell.run('todo_bridge.py', options, (err, results) => {
-            if (err) {
-                const sanitizedCommand = typeof command === 'string' ? command.split(' ')[0] : 'unknown';
-                logOperation('error', 'pythonCommandFailed', { requestId, command: sanitizedCommand }, err)
-                reject(new Error(`Command execution failed: ${err.message}`))
-                return
-            }
-            if (!results || results.length === 0) {
-                logOperation('error', 'pythonCommandNoResults', { requestId, command })
-                reject(new Error(`No results returned from Python command '${command}'`))
-                return
-            }
-            logOperation('info', 'pythonCommandSuccess', { requestId, command, results })
-            resolve(results[0])
-        })
-    })
-}
-
-// Example: Load tasks
-async function loadTasks() {
+async function fetchTasks() {
     try {
-        const tasks = await runPythonCommand('get_tasks', {})
-        // skipcq: JS-W1038
-        displayTasks(tasks)
+        const response = await fetch('http://localhost:5000/tasks');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
     } catch (error) {
-        console.error('Error loading tasks:', error)
+        logOperation('error', 'fetchTasksFailed', {}, error);
+        showIndicator('error', `Failed to load tasks: ${error.message}`);
+        return [];
     }
 }
 
-document.addEventListener('DOMContentLoaded', loadTasks)
-module.exports = { loadTasks}
-
-window.addEventListener('load', displayTasks);
-
-/**
- * Displays tasks in the task table by fetching from the server
- * @async
- * @function displayTasks
- * @description Fetches tasks from the server and renders them in the HTML table
- * including title, deadline, category, priority, and completion status
- */
-function displayTasks() {
-    fetch('http://localhost:5000/tasks')
-        .then(response => response.json())
-        .then(tasks => {
-            const tbody = document.getElementById('tasks-tbody');
-            tbody.innerHTML = '';
-        
-            tasks.forEach(task => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${task.title}</td>
-                    <td>${task.deadline || 'No deadline'}</td>
-                    <td>${task.category || 'Uncategorized'}</td>
-                    <td>${task.priority || 'None'}</td>
-                    <td>${task.completed ? 'Completed' : 'Pending'}</td>
-                `;
-                tbody.appendChild(row);
-            });
+async function addTask(taskData) {
+    try {
+        const response = await fetch('http://localhost:5000/tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(taskData)
         });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        logger.error({
+            requestId: generateRequestId(),
+            operation: 'addTaskFailed',
+            timestamp: new Date().toISOString(),
+            taskData,
+            error: {
+                message: error.message,
+                stack: error.stack
+            }
+        });
+        throw error;
+    }
+}
+
+function displayTasks(tasks) {
+    const tbody = document.getElementById('tasks-tbody');
+    tbody.innerHTML = '';
+
+    tasks.forEach(task => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${task.title}</td>
+            <td>${task.deadline || 'No deadline'}</td>
+            <td>${task.category || 'Uncategorized'}</td>
+            <td>${task.priority || 'None'}</td>
+            <td>${task.completed ? 'Completed' : 'Pending'}</td>
+        `;
+        tbody.appendChild(row);
+    });
 }
 
 /**
- * Shows a temporary status indicator to the user
+ * Shows a temporary status indicator
  * @function showIndicator
- * @param {'success' | 'error'} type - The type of indicator to show
- * @param {string} message - The message to display to the user
- * @description Displays a success or error message that automatically hides after 3 seconds.
- * Uses dedicated DOM elements for success and error states.
  */
 function showIndicator(type, message) {
     const successIndicator = document.getElementById('success-indicator');
     const errorIndicator = document.getElementById('error-indicator');
 
-    // Reset both indicators
     successIndicator.style.display = 'none';
     errorIndicator.style.display = 'none';
 
@@ -104,7 +88,6 @@ function showIndicator(type, message) {
         errorIndicator.style.display = 'block';
     }
     
-    // Auto-hide after 3 seconds
     setTimeout(() => {
         if (type === 'success') {
             successIndicator.style.display = 'none';
@@ -114,51 +97,17 @@ function showIndicator(type, message) {
     }, 3000);
 }
 
-/**
- * Refreshes the task list display with latest data from server
- * @async
- * @function refreshTaskList
- * @description Fetches updated task data from the server using retry mechanism,
- * logs the operation, and updates the task table in the DOM.
- * Handles errors and provides logging for debugging.
- * @returns {Promise<void>}
- */
-async function refreshTaskList() {
-    const requestId = logOperation('debug', 'refreshTaskList')
+// Initialize the app
+document.addEventListener('DOMContentLoaded', async () => {
+    // Use electronLogger.logOperation instead of logOperation directly
+    window.electronLogger.logOperation('info', 'appInitialized');
     
     try {
-        const response = await fetchWithRetry('http://localhost:5000/tasks')
-        const tasks = await response.json()
-        
-        logOperation('info', 'tasksRefreshed', { requestId, taskCount: tasks.length })
-        
-        const tbody = document.getElementById('tasks-tbody');
-        tbody.innerHTML = '';
-        
-        tasks.forEach(task => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${task[1] || ''}</td>
-                <td>${task[3] || 'No deadline'}</td>
-                <td>${task[4] || 'Uncategorized'}</td>
-                <td>${task[6] || 'None'}</td>
-                <td>${task[2] === 1 ? 'Completed' : 'Pending'}</td>
-            `;
-            tbody.appendChild(row);
-        });
+        const tasks = await fetchTasks();
+        displayTasks(tasks);
     } catch (error) {
-        logOperation('error', 'refreshTasksFailed', { requestId }, error)
+        showIndicator('error', `Failed to load tasks: ${error.message}`);
     }
-}
-// Call refreshTaskList when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    // skipcq: JS-0002
-    console.log('Renderer script loaded');
-    
-    // Small delay to ensure proper data loading
-    setTimeout(() => {
-        refreshTaskList();
-    }, 100);
     
     const addTaskButton = document.getElementById('add-task-button');
     const taskInput = document.getElementById('taskInput');
@@ -172,85 +121,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            await fetch('http://localhost:5000/tasks', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    title: taskTitle
-                })
-            });
-
-            // skipcq: JS-0002
-            console.log('Task created successfully');
+            await addTask({ title: taskTitle });
+            const tasks = await fetchTasks();
+            displayTasks(tasks);
             showIndicator('success', 'Task added successfully!');
             taskInput.value = '';
-            
-            // Refresh the task list to show the new entry
-            refreshTaskList();
-            
         } catch (error) {
-            console.log('Task created in database');
-            showIndicator('success', 'Task added successfully!');
-            taskInput.value = '';
-            refreshTaskList();
+            showIndicator('error', `Failed to add task: ${error.message}`);
         }
     });
 });
-
-// skipcq: JS-0128
-async function createTask(taskData) {
-    const response = await fetch('http://localhost:5000/tasks', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Server error: ${errorData}`);
-    }
-
-    return response.json();
-}
-
-// skipcq: JS-0045, JS-0128
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
-    const requestId = logOperation('debug', 'fetchWithRetry', { url, maxRetries })
-    const timeout = 5000; // 5 seconds timeout
-    
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            const controller = new AbortController();  
-            const timeoutId = setTimeout(() => controller.abort(), timeout);  
-            
-            const response = await fetch(url, {  
-                ...options,  
-                signal: controller.signal  
-            });  
-            
-            clearTimeout(timeoutId);  
-            
-            if (!response.ok) {  
-                throw new Error(`HTTP error! status: ${response.status}`);  
-            }  
-            logOperation('info', 'fetchSuccess', { requestId, attempt: i + 1 })
-            return response
-        } catch (error) {
-            logOperation('warn', 'fetchRetry', { requestId, attempt: i + 1, error: error.message })
-            if (error.name === 'AbortError') {  
-                throw new Error(`Request timeout after ${timeout}ms`);  
-            }
-            if (i === maxRetries - 1) {
-                logOperation('error', 'fetchFailed', { requestId }, error)
-                throw error
-            }
-            // Exponential backoff with jitter  
-            const delay = Math.min(1000 * Math.pow(2, i) + Math.random() * 1000, 10000);  
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-    }
-}

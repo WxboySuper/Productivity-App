@@ -1,134 +1,164 @@
-const { app, BrowserWindow } = require('electron')
-const { spawn } = require('child_process')
-const path = require('path')
-const { log, logOperation } = require('./js/logging_config')
-const { PythonShell } = require('python-shell')
-const pythonPath = process.env.PYTHON_PATH || 'python'
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
+const fs = require('fs');
 
-let serverProcess = null
-let bridgeProcess = null
-let pyshell = null
+// Setup logging first
+const LOG_FILE = path.join(__dirname, '..', 'logs', 'productivity.log');
 
-/**
- * Starts the Python backend processes (server, bridge, and pyshell)
- * Initializes the database path and handles process output/errors
- * @throws {Error} If server or bridge processes fail to start
- */
-function startBackendProcesses() {
-    const userDataPath = app.getPath('userData')
-    const dbPath = path.join(userDataPath, 'todo.db')
+function logToFile(level, message) {
+    const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const logEntry = `[${timestamp}] [${level.toUpperCase()}] electron - ${JSON.stringify(message)}\n`;
     
-    const baseDir = app.isPackaged 
-        ? path.join(process.resourcesPath, 'src', 'python')
-        : path.join(__dirname, '../src/python')
+    try {
+        fs.appendFileSync(LOG_FILE, logEntry);
+    } catch (error) {
+        console.error('Failed to write to log file:', error);
+    }
+}
+
+// Set up IPC handler for logging
+ipcMain.on('log-message', (_event, { level, message }) => {
+    logToFile(level, message);
+});
+
+let pythonProcess = null;
+
+function generateRequestId() {
+    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function startPythonServer() {
+    const pythonPath = process.env.PYTHON_PATH || 'python';
+    const serverScript = path.join(__dirname, 'python', 'server.py');
+    
+    return new Promise((resolve, reject) => {
+        pythonProcess = spawn(pythonPath, [serverScript], {
+            env: {
+                ...process.env,
+                PYTHONPATH: path.join(__dirname, 'python')  // Fix Python path
+            }
+        });
+
+        // Listen for successful server startup
+        const checkServer = () => {
+            fetch('http://localhost:5000/health')
+                .then(() => {
+                    logToFile('info', 'pythonServerReady');
+                    resolve();
+                })
+                .catch(() => {
+                    // Keep checking until timeout
+                    setTimeout(checkServer, 1000);
+                });
+        };
+
+        pythonProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            logToFile('debug', { output });
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            const output = data.toString();
+            // Common Flask startup and operation messages that should be debug level
+            const debugMessages = [
+                'WARNING: This is a development server',
+                'Running on http://',
+                'Press CTRL+C to quit',
+                '127.0.0.1 - -'
+            ];
+            
+            if (debugMessages.some(msg => output.includes(msg))) {
+                logToFile('debug', { output });
+                if (output.includes('Running on http://')) {
+                    checkServer();
+                }
+            } else {
+                logToFile('error', { error: output });
+            }
+        });
+
+        pythonProcess.on('error', (err) => {
+            reject(new Error(`Failed to start Python server: ${err.message}`));
+        });
+
+        // Set a reasonable timeout
+        setTimeout(() => {
+            reject(new Error('Server startup timeout'));
+        }, 30000);
+    });
+}
+
+async function createWindow() {
+    try {
+        logToFile('info', 'startingPythonServer');
+        await startPythonServer();
+
+        logToFile('info', 'startingWindowCreation');
         
-    const serverScript = path.join(baseDir, 'server.py')
-    const bridgeScript = path.join(baseDir, 'todo_bridge.py')
+        const mainWindow = new BrowserWindow({
+            width: 800,
+            height: 600,
+            webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: true,
+                enableRemoteModule: true,
+                preload: path.join(__dirname, 'preload.js'),
+                sandbox: false
+            }
+        });
 
-    logOperation('info', 'startBackendProcesses', { userDataPath, dbPath })
-
-    try {  
-        serverProcess = spawn(pythonPath, [serverScript], {  
-            env: { ...process.env, DB_PATH: dbPath }  
-        })  
-        logOperation('info', 'serverStarted', { script: serverScript })
-     } catch (error) {  
-         logOperation('error', 'serverStartFailed', {}, error)
-         app.quit()  
-     }     
-
-     try {  
-            bridgeProcess = spawn(pythonPath, [bridgeScript], {  
-                env: { ...process.env, DB_PATH: dbPath }  
-            })  
-        } catch (error) {  
-            log.error(`Failed to start bridge process: ${error}`)  
-            app.quit()  
+        const indexPath = path.join(__dirname, 'index.html');
+        logToFile('info', { path: indexPath });
+        
+        try {
+            await mainWindow.loadFile(indexPath);
+            mainWindow.show();
+            
+            if (process.env.NODE_ENV === 'development') {
+                mainWindow.webContents.openDevTools();
+            }
+            
+            logToFile('info', 'windowCreatedSuccessfully');
+        } catch (loadError) {
+            logToFile('error', { path: indexPath, error: loadError.toString() });
+            throw loadError;
         }
+        
+    } catch (error) {
+        logToFile('error', { operation: 'serverStartFailed', error: error.toString() });
+        app.quit();
+    }
+}
 
-    serverProcess.stdout.on('data', (data) => {
-        const output = data.toString();  
-        logOperation('info', 'serverOutput', { output })
-        if (output.includes('Running on')) {
-            log.info('Flask server started successfully')
-        }
-    })
-
-    serverProcess.stderr.on('data', (data) => {
-        logOperation('error', 'serverError', { error: data.toString() })
-    })
-    
-    bridgeProcess.stdout.on('data', (data) => {
-        log.info(`Bridge: ${data}`)
-    })
-
-    bridgeProcess.stderr.on('data', (data) => {  
-        log.error(`Bridge Error: ${data}`)  
-    }) 
-
-    // skipcq: JS-0241
-    pyshell = new PythonShell('app.py', {
-        mode: 'text',
-        // skipcq: JS-0240
-        pythonPath: pythonPath,
-        pythonOptions: ['-u'],
-        scriptPath: app.isPackaged 
-            ? path.join(process.resourcesPath, 'src', 'python')  
-            : path.join(__dirname, '../src/python')
+app.whenReady().then(() => {
+    createWindow().catch(error => {
+        logToFile('error', { operation: 'appInitializationFailed', error: error.toString() });
+        app.quit();
     });
-
-    pyshell.on('error', err => {
-        log.error('Flask server error:', err);
-    });
-}
-
-/**
- * Terminates all running Python processes
- * Cleans up server, bridge, and pyshell processes
- */
-function terminateProcesses() {
-    if (serverProcess) {
-        serverProcess.kill()
-        log.info('Server process terminated')
-    }
-    
-    if (bridgeProcess) {
-        bridgeProcess.kill()
-        log.info('Bridge process terminated')
-    }
-    
-    if (pyshell) {
-        pyshell.kill()
-        log.info('Python shell terminated')
-    }
-}
-
-/**
- * Creates and configures the main application window
- * Initializes backend processes and loads the main HTML file
- */
-function createWindow() {
-    startBackendProcesses()
-    const mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
-        webPreferences: {
-            // skipcq: JS-S1019
-            nodeIntegration: true,  
-            // skipcq: JS-S1020
-            contextIsolation: false 
-        }
-    })
-    mainWindow.loadFile('src/index.html')
-}
-app.whenReady().then(createWindow)
+});
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit()
+    if (pythonProcess) {
+        pythonProcess.kill();
     }
-})
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
+});
 
-app.on('before-quit', () => {
-    terminateProcesses()
-})
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+    }
+});
+
+process.on('uncaughtException', (error) => {
+    logToFile('error', {
+        requestId: generateRequestId(),
+        operation: 'uncaughtException',
+        timestamp: new Date().toISOString(),
+        error: error.toString(),
+        stack: error.stack
+    });
+});
