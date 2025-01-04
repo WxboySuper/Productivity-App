@@ -4,6 +4,8 @@ import os
 import signal
 import sys
 from python.logging_config import setup_logging
+import psutil
+import time
 
 os.makedirs("logs", exist_ok=True)
 
@@ -15,7 +17,8 @@ app = Flask(__name__)
 app.config.update(
     PORT=5000,
     ENV='development',
-    DEBUG=True
+    DEBUG=True,
+    START_TIME=time.time()  # Add startup time to track uptime
 )
 
 class AppContext:
@@ -67,9 +70,46 @@ def before_request():
 
 @app.route('/health')
 def health_check():
-    """Basic health check endpoint"""
+    """Comprehensive health check endpoint"""
     log.debug("Health check requested")
-    return {'status': 'healthy'}, 200
+    
+    # Calculate uptime
+    uptime = time.time() - app.config['START_TIME']
+    
+    # Get system metrics
+    memory = psutil.virtual_memory()
+    load = psutil.getloadavg()
+    
+    # Simulate DB check (replace with actual DB check in production)
+    db_status = "connected"  # This should be an actual DB connection check
+    
+    health_data = {
+        'status': 'healthy',
+        'uptime_seconds': round(uptime, 2),
+        'memory': {
+            'total': memory.total,
+            'available': memory.available,
+            'percent': memory.percent
+        },
+        'system_load': {
+            '1min': load[0],
+            '5min': load[1],
+            '15min': load[2]
+        },
+        'database': db_status
+    }
+    
+    # Set response status based on metrics
+    is_healthy = (
+        memory.percent < 90 and  # Less than 90% memory usage
+        load[0] < 5 and         # Load average below 5
+        db_status == "connected"
+    )
+    
+    health_data['status'] = 'healthy' if is_healthy else 'degraded'
+    status_code = 200 if is_healthy else 503
+    
+    return health_data, status_code
 
 
 if __name__ == '__main__':  # pragma: no cover
