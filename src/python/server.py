@@ -86,10 +86,10 @@ def check_database_health(timeout: float = None) -> Dict[str, Any]:
 
     def check_connection():
         """Attempt to establish and verify database connection.
-        
+
         Establishes connection to SQLite database, executes a simple query
         to verify connection is working, and properly closes resources.
-        
+
         Raises:
             sqlite3.OperationalError: If database connection fails
             sqlite3.Error: For other SQLite-related errors
