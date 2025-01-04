@@ -6,6 +6,9 @@ import sys
 from python.logging_config import setup_logging
 import psutil
 import time
+import sqlite3
+from typing import Dict, Any
+import concurrent.futures
 
 os.makedirs("logs", exist_ok=True)
 
@@ -69,6 +72,43 @@ def before_request():
         app.config['handled_first_request'] = True
 
 
+def check_database_health(timeout: float = 1.0) -> Dict[str, Any]:
+    """Check database connection health with timeout"""
+    db_health = {
+        "status": "disconnected",
+        "response_time": None,
+        "error": None
+    }
+
+    def check_connection():
+        conn = sqlite3.connect('productivity.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1')
+        cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+    try:
+        start_time = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(check_connection)
+            future.result(timeout=timeout)  # This will raise TimeoutError if it takes too long
+        
+        response_time = time.time() - start_time
+        db_health.update({
+            "status": "connected",
+            "response_time": round(response_time * 1000, 2),  # Convert to milliseconds
+            "error": None
+        })
+    except concurrent.futures.TimeoutError:
+        db_health["error"] = "Connection timed out"
+    except sqlite3.OperationalError as e:
+        db_health["error"] = f"Database error: {str(e)}"
+    except Exception as e:
+        db_health["error"] = f"Unexpected error: {str(e)}"
+    
+    return db_health
+
 @app.route('/health')
 def health_check():
     """Comprehensive health check endpoint"""
@@ -81,8 +121,8 @@ def health_check():
     memory = psutil.virtual_memory()
     load = psutil.getloadavg()
     
-    # Simulate DB check (replace with actual DB check in production)
-    db_status = "connected"  # This should be an actual DB connection check
+    # Perform database health check
+    db_health = check_database_health()
     
     health_data = {
         'status': 'healthy',
@@ -97,14 +137,14 @@ def health_check():
             '5min': load[1],
             '15min': load[2]
         },
-        'database': db_status
+        'database': db_health
     }
     
     # Set response status based on metrics
     is_healthy = (
-        memory.percent < 90 and  # Less than 90% memory usage
-        load[0] < 5 and         # Load average below 5
-        db_status == "connected"
+        memory.percent < 90 and          # Less than 90% memory usage
+        load[0] < 5 and                  # Load average below 5
+        db_health['status'] == "connected"
     )
     
     health_data['status'] = 'healthy' if is_healthy else 'degraded'
