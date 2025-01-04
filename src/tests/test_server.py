@@ -1,9 +1,9 @@
 from python.server import app, AppContext, signal_handler
 import unittest
-import unittest.mock
 import signal
 import time
 import sqlite3
+import os
 
 class TestServer(unittest.TestCase):
     """Test suite for server configuration."""
@@ -15,6 +15,22 @@ class TestServer(unittest.TestCase):
         self.app.config['PORT'] = 5000
         self.app.config['DEBUG'] = False
         self.client = self.app.test_client()
+        
+        # Register database cleanup
+        self.addCleanup(self.cleanup_test_database)
+
+    @staticmethod
+    def cleanup_test_database():
+        """Remove test database if it exists."""
+        try:
+            if os.path.exists('productivity.db'):
+                os.remove('productivity.db')
+        except OSError as e:
+            print(f"Warning: Could not remove test database: {e}")
+
+    def tearDown(self):
+        """Clean up test environment."""
+        self.cleanup_test_database()
 
     def test_app_exists(self):
         """Verify Flask app exists."""
