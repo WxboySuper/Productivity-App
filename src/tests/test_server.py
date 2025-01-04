@@ -157,6 +157,109 @@ class TestServer(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(data['status'], 'degraded')
 
+    @unittest.mock.patch('psutil.virtual_memory')
+    @unittest.mock.patch('psutil.getloadavg')
+    def test_health_check_edge_memory(self, mock_load, mock_memory):
+        """Test health check with edge case memory values."""
+        # Test 100% memory usage
+        mock_memory.return_value = unittest.mock.Mock(
+            total=16000000000,
+            available=0,
+            percent=100.0
+        )
+        mock_load.return_value = (1.0, 1.0, 1.0)  # Normal load
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        self.assertEqual(data['status'], 'degraded')
+        self.assertEqual(response.status_code, 503)
+
+        # Test 0% memory usage
+        mock_memory.return_value = unittest.mock.Mock(
+            total=16000000000,
+            available=16000000000,
+            percent=0.0
+        )
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        self.assertEqual(data['status'], 'healthy')
+        self.assertEqual(response.status_code, 200)
+
+    @unittest.mock.patch('psutil.virtual_memory')
+    @unittest.mock.patch('psutil.getloadavg')
+    def test_health_check_edge_load(self, mock_load, mock_memory):
+        """Test health check with edge case load values."""
+        mock_memory.return_value = unittest.mock.Mock(
+            total=16000000000,
+            available=8000000000,
+            percent=50.0
+        )
+
+        # Test negative load (shouldn't happen in reality, but should handle gracefully)
+        mock_load.return_value = (-1.0, -1.0, -1.0)
+        response = self.client.get('/health')
+        data = response.get_json()
+        self.assertEqual(data['status'], 'healthy')
+        self.assertEqual(response.status_code, 200)
+
+        # Test extremely high load
+        mock_load.return_value = (999.9, 999.9, 999.9)
+        response = self.client.get('/health')
+        data = response.get_json()
+        self.assertEqual(data['status'], 'degraded')
+        self.assertEqual(response.status_code, 503)
+
+    @unittest.mock.patch('psutil.virtual_memory')
+    @unittest.mock.patch('psutil.getloadavg')
+    def test_health_check_custom_thresholds(self, mock_load, mock_memory):
+        """Test health check with custom threshold configuration."""
+        mock_memory.return_value = unittest.mock.Mock(
+            total=16000000000,
+            available=8000000000,
+            percent=75.0
+        )
+        mock_load.return_value = (3.0, 3.0, 3.0)
+
+        # Test with custom thresholds
+        self.app.config['HEALTH_CHECK_MEMORY_THRESHOLD'] = 80
+        self.app.config['HEALTH_CHECK_LOAD_THRESHOLD'] = 4
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        self.assertEqual(data['status'], 'healthy')
+        
+        # Adjust thresholds to trigger degradation
+        self.app.config['HEALTH_CHECK_MEMORY_THRESHOLD'] = 70
+        self.app.config['HEALTH_CHECK_LOAD_THRESHOLD'] = 2
+        
+        response = self.client.get('/health')
+        data = response.get_json()
+        self.assertEqual(data['status'], 'degraded')
+
+    @unittest.mock.patch('psutil.virtual_memory')
+    @unittest.mock.patch('psutil.getloadavg')
+    @unittest.mock.patch('sqlite3.connect')
+    def test_health_check_multiple_degradation(self, mock_connect, mock_load, mock_memory):
+        """Test health check with multiple degradation conditions."""
+        # Set up all metrics to trigger degradation
+        mock_memory.return_value = unittest.mock.Mock(
+            total=16000000000,
+            available=1000000000,
+            percent=95.0
+        )
+        mock_load.return_value = (10.0, 8.0, 6.0)
+        mock_connect.side_effect = sqlite3.OperationalError("test error")
+
+        response = self.client.get('/health')
+        data = response.get_json()
+        
+        self.assertEqual(data['status'], 'degraded')
+        self.assertEqual(response.status_code, 503)
+        self.assertTrue(data['memory']['percent'] > 90)
+        self.assertTrue(data['system_load']['1min'] > 5)
+        self.assertEqual(data['database']['status'], 'disconnected')
+
     def test_health_check_uptime(self):
         """Test health check uptime calculation."""
         # Ensure START_TIME is set
