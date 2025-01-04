@@ -1,6 +1,5 @@
-from python.server import app, AppContext, signal_handler
+from python.server import app, signal_handler
 import unittest
-import signal
 import time
 import sqlite3
 import os
