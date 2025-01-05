@@ -18,13 +18,20 @@ setup_logging(__name__)
 log = logging.getLogger(__name__)
 app = Flask(__name__)
 todo_list = TodoList()
+
+# Force production environment
+os.environ['FLASK_ENV'] = 'production'
+os.environ['FLASK_DEBUG'] = 'false'
+
 app.config.update(
     PORT=int(os.environ.get('PORT', 5000)),
     ENV='production',
     DEBUG=False,
+    TESTING=False,
+    PROPAGATE_EXCEPTIONS=False,
+    PRESERVE_CONTEXT_ON_EXCEPTION=False,
     START_TIME=time.time(),
     DB_TIMEOUT=float(os.environ.get("DB_TIMEOUT", 1.0)),
-    PROPAGATE_EXCEPTIONS=False,
     JSONIFY_PRETTYPRINT_REGULAR=False,
     JSON_SORT_KEYS=False,
     PREFERRED_URL_SCHEME='https'
@@ -253,19 +260,17 @@ if __name__ == '__main__':  # pragma: no cover
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        log.info("Environment: %s", app.config['ENV'])
-        log.info("Debug mode: %s", app.config['DEBUG'])
+        log.info("Environment: production")
+        log.info("Debug mode: False")
         log.info("Server port: %s", app.config['PORT'])
 
         # Example cleanup handler registration
         app_context.register_cleanup(lambda: log.info("Closing database connections..."))
         app_context.register_cleanup(lambda: log.info("Closing file handles..."))
 
-        with app_context:
-            app.run(
-                host='localhost',
-                port=app.config['PORT']
-            )
+        # Use Gunicorn for production instead of Flask dev server
+        log.info("Use 'gunicorn' to run this application")
+        sys.exit(1)
     except Exception as e:
         log.critical(
             "Failed to start server - Error: %s",
