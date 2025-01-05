@@ -7,7 +7,8 @@
     "start": "electron .",
     "dev": "cross-env NODE_ENV=development electron .",
     "build": "electron-builder --dir",
-    "release": "electron-builder --publish always"
+    "release": "electron-builder --publish always",
+    "prebuild": "node scripts/prepare-python-deps.js"
   },
   "keywords": [],
   "author": "WeatherboySuper",
@@ -29,24 +30,27 @@
     "asar": true,
     "generateUpdatesFilesForAllChannels": true,
     "win": {
-      "publish": "github"
+      "publish": "github",
+      "target": "nsis"
     },
     "files": [
-      "**/*",
-      "src/**/*"
+      "src/**/*",
+      "!src/python/**/*"
     ],
     "extraResources": [
       {
         "from": "src/python",
-        "to": "src/python",
-        "filter": [
-          "**/*"
-        ]
+        "to": "python",
+        "filter": ["**/*"]
       },
       {
-        "from": "python-embedded",
-        "to": "python"
+        "from": "python-packages",
+        "to": "python/lib/site-packages"
       }
-    ]
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    }
   }
 }

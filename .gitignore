@@ -34,3 +34,6 @@ coverage.lcov
 *.log
 *.key
 *.pem
+
+# Python packages directory
+/python-packages/

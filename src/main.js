@@ -3,9 +3,34 @@ const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
 
-// Setup logging first
-const LOG_FILE = path.join(__dirname, '..', 'logs', 'productivity.log');
+// Early error logging setup
+function getAppDataPath() {
+    const userDataPath = app.getPath('userData');
+    const logsPath = path.join(userDataPath, 'logs');
+    try {
+        if (!fs.existsSync(logsPath)) {
+            fs.mkdirSync(logsPath, { recursive: true });
+        }
+    } catch (err) {
+        console.error('Failed to create logs directory:', err);
+    }
+    return logsPath;
+}
 
+// Update LOG_FILE path for production
+const LOG_FILE = path.join(getAppDataPath(), 'productivity.log');
+
+// Add startup error logging
+process.on('uncaughtException', (error) => {
+    const errorMsg = `[${new Date().toISOString()}] [ERROR] Startup Error: ${error.message}\n${error.stack}\n`;
+    try {
+        fs.appendFileSync(LOG_FILE, errorMsg);
+    } catch (e) {
+        console.error('Failed to write startup error:', e);
+    }
+});
+
+// Setup logging first
 function logToFile(level, message) {
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
     const logEntry = `[${timestamp}] [${level.toUpperCase()}] electron - ${JSON.stringify(message)}\n`;
@@ -28,17 +53,48 @@ function generateRequestId() {
     return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-function startPythonServer() {
-    const pythonPath = process.env.PYTHON_PATH || 'python';
-    const serverScript = path.join(__dirname, 'python', 'server.py');
+// Update Python path resolution for packaged app
+function getPythonPath() {
+    const isPackaged = app.isPackaged;
+    const resourcesPath = isPackaged ? process.resourcesPath : __dirname;
+    const pythonPath = path.join(resourcesPath, 'python');
+    const sitePackagesPath = path.join(pythonPath, 'lib', 'site-packages');
     
+    return {
+        scriptPath: path.join(pythonPath, 'server.py'),
+        pythonPath: process.env.PYTHON_PATH || 'python',
+        env: {
+            ...process.env,
+            PYTHONPATH: `${pythonPath}${path.delimiter}${sitePackagesPath}`
+        }
+    };
+}
+
+function startPythonServer() {
     return new Promise((resolve, reject) => {
-        pythonProcess = spawn(pythonPath, [serverScript], {
-            env: {
-                ...process.env,
-                PYTHONPATH: path.join(__dirname, 'python')  // Fix Python path
+        const { scriptPath, pythonPath, env } = getPythonPath();
+        
+        // Verify paths exist
+        try {
+            if (!fs.existsSync(scriptPath)) {
+                throw new Error(`Server script not found at: ${scriptPath}`);
             }
-        });
+            logToFile('debug', { 
+                message: 'Starting server with paths',
+                scriptPath,
+                pythonPath,
+                pythonPaths: env.PYTHONPATH
+            });
+        } catch (err) {
+            logToFile('error', {
+                message: 'Failed to verify paths',
+                error: err.message
+            });
+            reject(err);
+            return;
+        }
+
+        pythonProcess = spawn(pythonPath, [scriptPath], { env });
 
         // Listen for successful server startup
         const checkServer = () => {
@@ -119,6 +175,7 @@ function setupIPCHandlers() {
     // ...similar handlers for update and delete...
 }
 
+// Update createWindow to handle packaged paths
 async function createWindow() {
     try {
         logToFile('info', 'startingPythonServer');
@@ -150,8 +207,16 @@ async function createWindow() {
             }
         });
 
-        const indexPath = path.join(__dirname, 'index.html');
-        logToFile('info', { path: indexPath });
+        const indexPath = app.isPackaged 
+            ? path.join(__dirname, 'index.html')  // Changed from process.resourcesPath
+            : path.join(__dirname, 'index.html');
+
+        logToFile('info', { 
+            path: indexPath,
+            isPackaged: app.isPackaged,
+            dirname: __dirname,
+            resourcePath: process.resourcesPath
+        });
         
         try {
             await mainWindow.loadFile(indexPath);
@@ -168,7 +233,11 @@ async function createWindow() {
         }
         
     } catch (error) {
-        logToFile('error', { operation: 'serverStartFailed', error: error.toString() });
+        logToFile('error', {
+            operation: 'createWindow',
+            error: error.message,
+            stack: error.stack
+        });
         app.quit();
     }
 }
