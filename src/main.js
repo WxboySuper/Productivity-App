@@ -136,28 +136,19 @@ async function createWindow() {
                 preload: path.join(__dirname, 'preload.js'),
                 webSecurity: true,  // Enable web security
                 allowRunningInsecureContent: false,
-                enableRemoteModule: false
+                enableRemoteModule: false,
+                devTools: true  // Always enable DevTools
             }
         });
 
-        // Production CSP headers
-        mainWindow.webContents.session.webRequest.onHeadersReceived(
-            (details, callback) => {
-                callback({
-                    responseHeaders: {
-                        ...details.responseHeaders,
-                        'Content-Security-Policy': ["default-src 'self'"]
-                    }
-                });
+        // Register keyboard shortcut for DevTools
+        mainWindow.webContents.on('before-input-event', (event, input) => {
+            if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+                logToFile('debug', 'DevTools opened via keyboard shortcut');
+                mainWindow.webContents.openDevTools();
+                event.preventDefault();
             }
-        );
-
-        // Disable devtools in production
-        if (process.env.NODE_ENV !== 'development') {
-            mainWindow.webContents.on('devtools-opened', () => {
-                mainWindow.webContents.closeDevTools();
-            });
-        }
+        });
 
         const indexPath = path.join(__dirname, 'index.html');
         logToFile('info', { path: indexPath });

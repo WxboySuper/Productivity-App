@@ -268,9 +268,18 @@ if __name__ == '__main__':  # pragma: no cover
         app_context.register_cleanup(lambda: log.info("Closing database connections..."))
         app_context.register_cleanup(lambda: log.info("Closing file handles..."))
 
-        # Use Gunicorn for production instead of Flask dev server
-        log.info("Use 'gunicorn' to run this application")
-        sys.exit(1)
+        # Check if we're on Windows or if we should use the production server
+        if os.name == 'nt' or os.environ.get('USE_PRODUCTION_SERVER') == 'false':
+            with app_context:
+                app.run(
+                    host='localhost',
+                    port=app.config['PORT'],
+                    threaded=True,
+                    processes=1
+                )
+        else:
+            log.info("Use 'gunicorn' to run this application")
+            sys.exit(1)
     except Exception as e:
         log.critical(
             "Failed to start server - Error: %s",
