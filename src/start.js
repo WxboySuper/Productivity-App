@@ -5,7 +5,6 @@ const path = require('path');
 // Get the base directory for Python files
 const baseDir = path.join(__dirname);
 const pythonPath = process.env.PYTHON_PATH || 'python';
-const serverScript = path.join(baseDir, 'python', 'server.py');
 
 // Set Python environment with correct PYTHONPATH
 const env = {
