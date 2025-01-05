@@ -32,7 +32,6 @@ const env = {
 let pythonProcess = null;
 
 function startPythonServer() {
-    const pythonPath = process.env.PYTHON_PATH || 'python';
     const serverScript = path.join(__dirname, 'python', 'server.py');
     const isWindows = process.platform === 'win32';
     
