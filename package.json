@@ -1,14 +1,14 @@
 {
   "name": "productivity",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "Task Management Application",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "cross-env NODE_ENV=development electron .",
+    "test": "jest",
     "build": "electron-builder --dir",
-    "release": "electron-builder --publish always",
-    "prebuild": "node scripts/prepare-python-deps.js"
+    "dev": "NODE_ENV=development electron .",
+    "release": "electron-builder --publish never"
   },
   "keywords": [],
   "author": "WeatherboySuper",
@@ -16,41 +16,38 @@
   "dependencies": {
     "electron-log": "^5.2.2",
     "electron-squirrel-startup": "^1.0.1",
-    "python-shell": "^5.0.0",
-    "uuid": "^9.0.1"
+    "python-shell": "^5.0.0"
   },
   "devDependencies": {
     "@electron/fuses": "^1.8.0",
-    "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "electron-reloader": "^1.2.3",
+    "nodemon": "^3.0.1"
   },
   "build": {
     "asar": true,
     "generateUpdatesFilesForAllChannels": true,
     "win": {
-      "publish": "github",
-      "target": "nsis"
+      "publish": "never"
     },
     "files": [
-      "src/**/*",
-      "!src/python/**/*"
+      "**/*",
+      "src/**/*"
     ],
     "extraResources": [
       {
         "from": "src/python",
-        "to": "python",
-        "filter": ["**/*"]
+        "to": "src/python",
+        "filter": [
+          "**/*"
+        ]
       },
       {
-        "from": "python-packages",
-        "to": "python/lib/site-packages"
+        "from": "python-embedded",
+        "to": "python"
       }
-    ],
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    }
+    ]
   }
 }

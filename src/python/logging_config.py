@@ -3,70 +3,26 @@ import os
 import time
 from functools import wraps
 from contextlib import contextmanager
-from logging.handlers import RotatingFileHandler
-from typing import Optional
-
-LOG_FILE = os.path.join('logs', 'productivity.log')
-
-def clear_log_file():
-    """Clear the log file contents."""
-    try:
-        os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-        with open(LOG_FILE, 'w') as f:
-            f.write('')  # Clear file contents
-    except Exception as e:
-        print(f"Error clearing log file: {e}")
 
 # Create logs directory
 os.makedirs("logs", exist_ok=True)
 
 
-def setup_logging(logger_name, log_file=None):
-    """Setup logging configuration."""
-    logger = logging.getLogger(logger_name)
+def setup_logging(name):
+    """Configure logging for development environment"""
+    log_level = logging.DEBUG if os.environ.get('FLASK_ENV') == 'development' else logging.INFO
     
-    # Remove existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-    
-    # Production-ready formatter with process ID
-    formatter = logging.Formatter(
-        '[%(asctime)s] [%(levelname)s] [%(process)d] %(name)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+    logging.basicConfig(
+        level=log_level,
+        format='%(levelname)s [%(asctime)s] %(name)s - %(message)s [%(filename)s:%(lineno)d]',
+        datefmt='%Y-%m-%d %H:%M:%S.%f',
+        handlers=[
+            logging.FileHandler('logs/productivity_dev.log'),
+            logging.StreamHandler()
+        ]
     )
     
-    if log_file is None:
-        log_file = os.path.join("logs", "productivity.log")
-        
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-    
-    # Add file handler with rotation
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    
-    # Set production defaults
-    logger.setLevel(logging.INFO if os.getenv('FLASK_ENV') != 'development' else logging.DEBUG)
-    
-    # Add error logging to separate file
-    error_handler = RotatingFileHandler(
-        os.path.join("logs", "error.log"),
-        maxBytes=5*1024*1024,  # 5MB
-        backupCount=10
-    )
-    error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(formatter)
-    logger.addHandler(error_handler)
-    
-    # Capture SQLite logs
-    logging.getLogger('sqlite3').setLevel(logging.INFO)
-    
-    return logger
+    return logging.getLogger(name)
 
 
 def log_execution_time(logger):

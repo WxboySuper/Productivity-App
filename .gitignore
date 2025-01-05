@@ -37,3 +37,17 @@ coverage.lcov
 
 # Python packages directory
 /python-packages/
+
+# Development databases
+*_dev.db
+*.db-journal
+
+# Development logs
+*_dev.log
+
+# Hot reload temporary files
+.electron-reload
+
+# Development environment
+.env.development
+.env.local
