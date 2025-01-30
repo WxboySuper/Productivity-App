@@ -611,5 +611,4 @@ class TodoDatabase:
             return conn
         except sqlite3.Error as e:
             log.error("Failed to connect to database: %s", str(e))
-            raise DatabaseError(f"Database connection failed: {str(e)}", "DB_CONN_ERROR")
-
+            raise DatabaseError(f"Database connection failed: {str(e)}", "DB_CONN_ERROR") from e
