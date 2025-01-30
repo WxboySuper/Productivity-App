@@ -4,7 +4,7 @@ import json
 import uuid
 import logging
 from logging_config import setup_logging, log_execution_time, log_context
-from typing import Any, List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 from contextlib import contextmanager
 
 log = setup_logging(__name__)
@@ -182,8 +182,7 @@ class TodoDatabase:
                 self._validate_priority(priority)
                 self._validate_title(title)
 
-                with sqlite3.connect(self.db_file) as conn:
-                    cursor = conn.cursor()
+                with self.transaction() as cursor:
                     cursor.execute("""
                         INSERT INTO tasks (title, deadline, category, notes, priority)
                         VALUES (?, ?, ?, ?, ?)

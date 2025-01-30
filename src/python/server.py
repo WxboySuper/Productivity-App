@@ -20,7 +20,7 @@ app = Flask(__name__)
 app.config.update(
     PORT=5000,
     ENV='development',
-    DEBUG=True,
+    DEBUG=os.environ.get("FLASK_DEBUG", False),
     START_TIME=time.time(),  # Add startup time to track uptime
     DB_TIMEOUT=os.environ.get("DB_TIMEOUT", 1.0),  # Add configurable timeout
     HEALTH_CHECK_MEMORY_THRESHOLD=95,  # More lenient for development
