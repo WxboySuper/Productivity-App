@@ -9,6 +9,18 @@ let serverProcess = null
 let bridgeProcess = null
 let pyshell = null
 
+// Enable hot reload in development
+if (process.env.NODE_ENV === 'development') {
+  try {
+    require('electron-reloader')(module, {
+      watchDir: path.join(__dirname, 'python'),
+      ignore: [/todo\.db/, /\.git/, /\.github/, /node_modules/, /dist/]
+    })
+  } catch (err) {
+    // Ignore reloader errors in production
+  }
+}
+
 /**
  * Starts the Python backend processes (server, bridge, and pyshell)
  * Initializes the database path and handles process output/errors
@@ -16,7 +28,7 @@ let pyshell = null
  */
 function startBackendProcesses() {
     const userDataPath = app.getPath('userData')
-    const dbPath = path.join(userDataPath, 'todo.db')
+    const dbPath = path.join(userDataPath, 'todo_dev.db')
     
     const baseDir = app.isPackaged 
         ? path.join(process.resourcesPath, 'src', 'python')
@@ -27,10 +39,18 @@ function startBackendProcesses() {
 
     logOperation('info', 'startBackendProcesses', { userDataPath, dbPath })
 
+    // Update environment variables for development
+    const env = {
+        ...process.env,
+        PYTHONPATH: baseDir,
+        PYTHON_PATH: pythonPath,
+        FLASK_ENV: 'development',
+        FLASK_DEBUG: 'true',
+        DB_PATH: dbPath
+    }
+
     try {  
-        serverProcess = spawn(pythonPath, [serverScript], {  
-            env: { ...process.env, DB_PATH: dbPath }  
-        })  
+        serverProcess = spawn(pythonPath, [serverScript], { env })  
         logOperation('info', 'serverStarted', { script: serverScript })
      } catch (error) {  
          logOperation('error', 'serverStartFailed', {}, error)

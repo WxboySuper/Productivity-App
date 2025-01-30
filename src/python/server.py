@@ -22,7 +22,9 @@ app.config.update(
     ENV='development',
     DEBUG=os.environ.get("FLASK_DEBUG", False),
     START_TIME=time.time(),  # Add startup time to track uptime
-    DB_TIMEOUT=os.environ.get("DB_TIMEOUT", 1.0)  # Add configurable timeout
+    DB_TIMEOUT=os.environ.get("DB_TIMEOUT", 1.0),  # Add configurable timeout
+    HEALTH_CHECK_MEMORY_THRESHOLD=95,  # More lenient for development
+    HEALTH_CHECK_LOAD_THRESHOLD=10     # More lenient for development
 )
 
 

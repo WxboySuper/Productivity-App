@@ -1,8 +1,10 @@
-from python.database import TodoDatabase, DatabaseError
-from python.logging_config import setup_logging, log_execution_time, log_context
+from database import TodoDatabase, DatabaseError
+from logging_config import setup_logging, log_execution_time, log_context
 import os
 import uuid
 import json
+from typing import List, Optional
+import logging
 
 os.makedirs("logs", exist_ok=True)
 
@@ -65,41 +67,29 @@ class TodoList:
                 raise RuntimeError(f"Database operation failed: {str(e)}") from e
 
     @log_execution_time(log)
-    def add_task(self, task, deadline=None, category=None, notes=None, priority=None):
-        """
-        Adds a new task to the TodoList and saves it to the database.
-
-        Args:
-            task (str): The name or description of the new task.
-            deadline (datetime.datetime, optional): The deadline for the task. Defaults to None.
-            category (str, optional): The category or type of the task. Defaults to None.
-            notes (str, optional): Any additional notes or details about the task. Defaults to None.
-            priority (int, optional): The priority level of the task, where 1 is the highest priority. Defaults to None.
-
-        Returns:
-            int: The ID of the newly added task.
-        """
-        with log_context(log, "add_task", operation_id=self.generate_operation_id()):
-            log.debug("Task details: %s", json.dumps({
-                'task': task,
-                'deadline': str(deadline) if deadline else None,
-                'category': category,
-                'notes': notes,
-                'priority': priority
-            }))
-
-            if not task or not isinstance(task, str):
-                log.error("Invalid task parameter - Task must be non-empty string")
-                raise ValueError("Task must be a non-empty string")
-
-            try:
-                task_id = self.db.add_task(task, deadline, category, notes, priority)
-                self.refresh_tasks()
-                log.info("Successfully added task [TaskID: %s]", task_id)
-                return task_id
-            except (TimeoutError, DatabaseError) as e:
-                log.error("Failed to add task - Error: %s", str(e), exc_info=True)
-                raise RuntimeError(f"Database operation failed: {str(e)}") from e
+    def add_task(self, title: str, deadline: Optional[str] = None, 
+                 category: Optional[str] = None, priority: Optional[str] = None) -> dict:
+        """Add a new task to the todo list."""
+        try:
+            with self.db.transaction() as cursor:
+                cursor.execute(
+                    """INSERT INTO tasks (title, deadline, category, priority, completed)
+                       VALUES (?, ?, ?, ?, ?) RETURNING id, title, deadline, category, 
+                       priority, completed""",
+                    (title, deadline, category, priority, False)
+                )
+                row = cursor.fetchone()
+                return {
+                    'id': row[0],
+                    'title': row[1],
+                    'deadline': row[2],
+                    'category': row[3],
+                    'priority': row[4],
+                    'completed': bool(row[5])
+                }
+        except Exception as e:
+            log.error("Failed to add task: %s", str(e))
+            raise
 
     @log_execution_time(log)
     def mark_completed(self, task_index):
@@ -201,3 +191,24 @@ class TodoList:
                 error_msg = str(e)
                 log.error("Failed to delete task - Error: %s", error_msg, exc_info=True)
                 raise RuntimeError(f"Database operation failed: {error_msg}") from e
+
+    @log_execution_time(log)
+    def get_tasks(self) -> List[dict]:
+        """Get all tasks from the todo list."""
+        try:
+            with self.db.transaction() as cursor:
+                cursor.execute(
+                    """SELECT id, title, deadline, category, priority, completed 
+                       FROM tasks ORDER BY id DESC"""
+                )
+                return [{
+                    'id': row[0],
+                    'title': row[1],
+                    'deadline': row[2],
+                    'category': row[3],
+                    'priority': row[4],
+                    'completed': bool(row[5])
+                } for row in cursor.fetchall()]
+        except Exception as e:
+            log.error("Failed to get tasks: %s", str(e))
+            raise
