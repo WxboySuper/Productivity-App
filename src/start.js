@@ -10,7 +10,7 @@ function logToFile(level, message) {
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
     const logEntry = `[${timestamp}] [${level.toUpperCase()}] electron - ${JSON.stringify(message)}\n`;
     try {
-        fs.appendFileSync(LOG_FILE, logEntry);
+        fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
     } catch (error) {
         // If we can't log to file, fall back to console as last resort
         console.error('Failed to write to log file:', error);
