@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const electron = require('electron');
 const path = require('path');
 const fs = require('fs');
+const fetch = require('electron-fetch');
 
 // Setup logging
 const LOG_FILE = path.join(__dirname, '..', 'logs', 'productivity.log');
